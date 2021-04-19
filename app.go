@@ -13,11 +13,11 @@ import (
 
 // App struct to hold refs and database info
 type App struct {
-	router *mux.Router
-	url    *string
-	address   *string
+	router  *mux.Router
+	url     *string
+	address *string
 	refresh *int
-	Data   *[]OUI
+	Data    *[]OUI
 }
 
 // Initialize app struct with database info
