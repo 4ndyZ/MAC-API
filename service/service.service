@@ -1,0 +1,24 @@
+[Unit]
+Description=MAC-API Service
+ConditionPathExists=/usr/local/bin/MAC-API
+After=network.target
+
+[Service]
+Type=simple
+User=mac-api
+Group=mac-api
+
+Restart=on-failure
+RestartSec=10
+startLimitIntervalSec=60
+
+ExecStart=/usr/local/bin/MAC-API
+
+# Make sure log directory exists
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p /var/log/mac-api
+ExecStartPre=/bin/chown mac-api:mac-api /var/log/mac-api
+ExecStartPre=/bin/chmod 0744 /var/log/mac-api
+
+[Install]
+WantedBy=multi-user.target

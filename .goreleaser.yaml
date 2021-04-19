@@ -1,0 +1,57 @@
+builds:
+  - env: [CGO_ENABLED=0]
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+checksum:
+  name_template: "Checksums.txt"
+archives:
+  - name_template: "{{ .ProjectName }}-{{ .Tag }}.{{ .Os }}.{{ .Arch }}"
+    replacements:
+      amd64: x86_64
+      darwin: macOS
+    files:
+      - config/config.conf
+    format_overrides:
+      - goos: windows
+        format: zip
+nfpms:
+  - maintainer: AndyZ <info@andycraftz.eu>
+    description: MAC Address API
+    homepage: https://github.com/4ndyZ/MAC-API
+    file_name_template: "{{ .ProjectName }}-{{ .Tag }}.{{ .Os }}.{{ .Arch }}"
+    license: GPL-3.0
+    # Build as deb for Debian based distors and rpm for RedHat based distros
+    formats:
+      - deb
+      - rpm
+    contents:
+      # Config file
+      - src: config/config.conf
+        dst: /etc/mac-api/config.conf
+        type: "config|noreplace"
+        file_info:
+          mode: 0640
+          owner: root
+          group: mac-api
+      # Systemd service file
+      - src: service/service.service
+        dst: /usr/lib/systemd/system/mac-api.service
+    # Install and remove scripts
+    scripts:
+      preinstall: "scripts/preinstall.sh"
+      postremove: "scripts/postremove.sh"
+    overrides:
+      rpm:
+        replacements:
+          amd64: x86_64
+          arm64: aarch64
+release:
+  # Set name of the release on GitHub
+  name_template: "Release v{{.Version}}"
+  prerelease: auto
