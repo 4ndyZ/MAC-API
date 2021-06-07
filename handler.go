@@ -77,7 +77,7 @@ func (a *App) GetMAC(w http.ResponseWriter, r *http.Request) {
 	input := strings.ToUpper((mux.Vars(r))["mac"]) // Convert OUI to upper case
 
 	// Remove all non HEX chars
-	reg, _ := regexp.Compile("[^0-9A-F]+")
+	reg := regexp.MustCompile("[^0-9A-F]+")
 	request := reg.ReplaceAllString(input, "")
 
 	if len(request) != 12 { // Length of OUI has to be 6
