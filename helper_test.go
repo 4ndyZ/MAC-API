@@ -14,13 +14,13 @@ func Test_SplitMAC(t *testing.T) {
 	expectedMAC := "FC-FC-48-CC-3E-5D"
 
 	oui := SplitMAC(sampleOUI)
-	if (oui != expectedOUI) {
+	if oui != expectedOUI {
 		t.Errorf("OUI splitted incorrect. Wanted %s but got %s", expectedOUI, oui)
 	}
 
 	mac := SplitMAC(sampleMAC)
 
-	if (mac != expectedMAC) {
+	if mac != expectedMAC {
 		t.Errorf("MAC splitted incorrect. Wanted %s but got %s", expectedMAC, mac)
 	}
 }

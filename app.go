@@ -39,17 +39,17 @@ func (a *App) Initialize(url string, address string, refresh int) {
 func (a *App) Refresh() {
 	Log.Logger.Info().Msg("Starting data refresh ... ")
 	// Get MAC data
-	ouisdata, err := a.GetMACData(*a.url)
+	ouisData, err := a.GetMACData(*a.url)
 	if err != nil {
 		Log.Logger.Warn().Str("error", err.Error()).Msg("Error while getting the data from the IEEE.")
 	}
 	// Parse MAC data
-	ouis, err := a.ParseMACData(&ouisdata)
+	ouis, err := a.ParseMACData(&ouisData)
 	if err != nil {
 		Log.Logger.Warn().Str("error", err.Error()).Msg("Error while parsing the data from the IEEE.")
 	}
 	a.Data = &ouis
-	Log.Logger.Info().Msg("Finshed data refresh.")
+	Log.Logger.Info().Msg("Finished data refresh.")
 }
 
 func (a *App) Run() {
@@ -66,7 +66,7 @@ func (a *App) Run() {
 	go func() {
 		Log.Logger.Info().Msg("API Webserver running ...")
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
-			// it is fine to use Fatal here because it is not main gorutine
+			// It is fine to use Fatal here because it is not main goroutine
 			Log.Logger.Fatal().Str("error", err.Error()).Msg("API Webserver server error.")
 		}
 	}()
@@ -78,24 +78,19 @@ func (a *App) Run() {
 	// Method invoked upon seeing signal
 	go func() {
 		s := <-sigs
-
 		Log.Logger.Info().Str("reason", s.String()).Msg("API shutting down ...")
-
 		gracefullCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelShutdown()
-
 		if err := httpServer.Shutdown(gracefullCtx); err != nil {
 			Log.Logger.Warn().Str("error", err.Error()).Msg("Error while stopping API Webserver.")
 			return
-		} else {
-			Log.Logger.Info().Msg("API Webserver stopped.")
 		}
-
+		Log.Logger.Info().Msg("API Webserver stopped.")
 		cancel()
-
 		Log.Logger.Info().Msg("API stopped.")
-
+		// Rotate log file
 		Log.Rotate()
+		// Exit
 		os.Exit(1)
 	}()
 

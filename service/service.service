@@ -1,6 +1,6 @@
 [Unit]
 Description=MAC-API Service
-ConditionPathExists=/usr/local/bin/MAC-API
+ConditionPathExists=/usr/local/bin/mac-api
 After=network.target
 
 [Service]
@@ -12,7 +12,7 @@ Restart=on-failure
 RestartSec=10
 startLimitIntervalSec=60
 
-ExecStart=/usr/local/bin/MAC-API
+ExecStart=/usr/local/bin/mac-api
 
 # Make sure log directory exists
 PermissionsStartOnly=true

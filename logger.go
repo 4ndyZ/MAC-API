@@ -14,6 +14,7 @@ type Logger struct {
 	fileWriter *lumberjack.Logger
 }
 
+// Initialize logger with config file location as string
 func (l *Logger) Initialize(f string) {
 	// Create console writer
 	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
@@ -22,7 +23,7 @@ func (l *Logger) Initialize(f string) {
 		Filename:   f,
 		MaxSize:    100, // Megabytes
 		MaxBackups: 3,
-		MaxAge:     28, // Days: true,
+		MaxAge:     28, // Days: true
 		LocalTime:  true,
 	}
 	multi := zerolog.MultiLevelWriter(consoleWriter, fileWriter)
@@ -35,9 +36,10 @@ func (l *Logger) Initialize(f string) {
 	l.Logger = &logger
 }
 
-func (l *Logger) EnableDebug(d bool) {
+// EnableDebug enable the debugging mode of the logger depending on bool
+func (l *Logger) EnableDebug(debug bool) {
 	if l.Logger != nil {
-		if d {
+		if debug {
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 			l.Logger.Info().Str("loglevel", "debug").Msg("LogLevel changed.")
 		} else {
@@ -47,6 +49,10 @@ func (l *Logger) EnableDebug(d bool) {
 	}
 }
 
+// Rotate log file
 func (l *Logger) Rotate() {
-	l.fileWriter.Rotate()
+	err := l.fileWriter.Rotate()
+	if err != nil {
+		Log.Logger.Warn().Str("error", err.Error()).Msg("Unable to rotate log file.")
+	}
 }

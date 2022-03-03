@@ -1,7 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 systemctl stop mac-api
-getent passwd mac-api >/dev/null || \
-	userdel -f mac-api
-getent group mac-api >/dev/null || \
-	groupdel mac-api
+userdel -f mac-api >/dev/null
 exit 0

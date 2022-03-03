@@ -15,12 +15,11 @@ type OUI struct {
 	Address string
 }
 
-//
+// Configuration struct
 type Configuration struct {
 	Address      string `yaml:"address"`
 	TimeInterval int    `yaml:"timeinterval-to-pull"`
 	Logging      struct {
-		Dir   string `yaml:"log-dir"`
-		Debug bool   `yaml:"debug"`
-	}
+		Debug bool `yaml:"debug"`
+	} `yaml:"logging"`
 }

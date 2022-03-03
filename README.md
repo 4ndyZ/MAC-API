@@ -64,7 +64,7 @@ Download the prebuilt binary packages from the [release page](https://github.com
 If you are running a Debian-based Linux Distribution choose the `.deb` Package for your operating system architecture and download it. You are able to use curl to download the package.
 
 Now you are able to install the package using APT.
-`sudo apt install ./MAC-API-vX.X-.linux.XXXX.deb`
+`sudo apt install ./mac-api-vX.X-.linux.XXXX.deb`
 
 After installing the package configure the API. The configuration file is located under `/etc/mac-api/config.yml`.
 
@@ -78,7 +78,7 @@ And start the service also using `systemctl`.
 When running a RHEL-based Linux Distribution choose the `.rpm` package for your operating system architecture and download it.
 
 Now you are able to install the package.
-`sudo rpm -i MAC-API-vX.X-.linux.XXXX.rpm`
+`sudo dnf install ./mac-api-vX.X-.linux.XXXX.rpm`
 
 After installing the package configure the API. The configuration file is located under `/etc/mac-api/config.yml`.
 

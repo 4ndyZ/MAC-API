@@ -1,4 +1,4 @@
-name: Release
+name: "Release"
 
 on:
   create:
@@ -9,16 +9,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+
+      - name: Get Go version from go.mod
+        run: sed -En 's/^go[[:space:]]+([[:digit:].]+)$/GO_VERSION=\1/p' go.mod >> $GITHUB_ENV
 
       - name: Set up Go
         id: setup_go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Cache Go modules
         id: cache_go

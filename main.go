@@ -14,12 +14,12 @@ func main() {
 	// Create configuration object
 	configuration := Configuration{}
 	// Initialize logging
-	logfolder := "/var/log/mac-api"
-	_, err := os.Stat(logfolder)
+	logFolder := "/var/log/mac-api"
+	_, err := os.Stat(logFolder)
 	if os.IsNotExist(err) || os.IsPermission(err) {
-		logfolder = "log"
+		logFolder = "log"
 	}
-	Log.Initialize(strings.Join([]string{logfolder, "/log.txt"}, ""))
+	Log.Initialize(strings.Join([]string{logFolder, "/log.txt"}, ""))
 
 	config := ""
 	config1 := "/etc/mac-api/config.conf"
@@ -63,7 +63,7 @@ func main() {
 	flag.IntVar(&configuration.TimeInterval, "timeinterval", configuration.TimeInterval, "Time interval when the data should be refreshed in seconds (default: 86400)")
 	flag.BoolVar(&configuration.Logging.Debug, "debug", configuration.Logging.Debug, "Option to run the API in debugging mode")
 	flag.Parse()
-	// Check if debug log should be enabeled
+	// Check if debug log should be enabled
 	if configuration.Logging.Debug {
 		Log.EnableDebug(true)
 	}
@@ -71,6 +71,5 @@ func main() {
 	// Create app worker
 	a := App{}
 	a.Initialize("http://standards-oui.ieee.org/oui/oui.csv", configuration.Address, configuration.TimeInterval)
-	//
 	a.Run()
 }

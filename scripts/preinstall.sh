@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 getent group mac-api >/dev/null || \
 	groupadd -r mac-api
 getent passwd mac-api >/dev/null || \
