@@ -1,9 +1,8 @@
 name: "Release"
 
 on:
-  create:
-    tags:
-      - v*
+  pull_request:
+  push:
 
 jobs:
   build:

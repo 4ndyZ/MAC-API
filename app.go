@@ -55,7 +55,6 @@ func (a *App) Refresh() {
 func (a *App) Run() {
 
 	ctx, cancel := context.WithCancel(context.Background())
-
 	httpServer := &http.Server{
 		Addr:        *a.address,
 		Handler:     a.router,
@@ -88,8 +87,6 @@ func (a *App) Run() {
 		Log.Logger.Info().Msg("API Webserver stopped.")
 		cancel()
 		Log.Logger.Info().Msg("API stopped.")
-		// Rotate log file
-		Log.Rotate()
 		// Exit
 		os.Exit(1)
 	}()

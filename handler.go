@@ -48,7 +48,7 @@ func (a *App) ParseMACData(body *[][]string) ([]OUI, error) {
 func (a *App) GetOUI(w http.ResponseWriter, r *http.Request) {
 	input := strings.ToUpper((mux.Vars(r))["oui"]) // Convert OUI to upper case
 
-	// Remove all non HEX chars
+	// Remove all non-HEX chars
 	reg, _ := regexp.Compile("[^0-9A-F]+")
 	request := reg.ReplaceAllString(input, "")
 
@@ -76,7 +76,7 @@ func (a *App) GetOUI(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetMAC(w http.ResponseWriter, r *http.Request) {
 	input := strings.ToUpper((mux.Vars(r))["mac"]) // Convert OUI to upper case
 
-	// Remove all non HEX chars
+	// Remove all non-HEX chars
 	reg := regexp.MustCompile("[^0-9A-F]+")
 	request := reg.ReplaceAllString(input, "")
 
@@ -120,7 +120,10 @@ func (a *App) respondWithJSON(w http.ResponseWriter, code int, payload interface
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write(response)
+	_, err := w.Write(response)
+	if err != nil {
+		return
+	}
 }
 
 // Send a JSON error message

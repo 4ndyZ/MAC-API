@@ -4,6 +4,7 @@ builds:
       - linux
       - windows
       - darwin
+      - freebsd
     goarch:
       - amd64
       - arm64
@@ -27,7 +28,7 @@ nfpms:
     homepage: https://github.com/4ndyZ/MAC-API
     file_name_template: "{{ tolower .ProjectName }}-{{ tolower .Tag }}.{{ .Os }}.{{ tolower .Arch }}"
     license: GPL-3.0
-    # Build as deb for Debian based distors and rpm for RedHat based distros
+    # Build as deb for Debian based distributions and rpm for RedHat based distributions
     formats:
       - deb
       - rpm
@@ -41,8 +42,12 @@ nfpms:
           owner: root
           group: mac-api
       # Systemd service file
-      - src: service/service.service
+      - src: service/service_deb.service
         dst: /usr/lib/systemd/system/mac-api.service
+        packager: deb
+      - src: service/service_rpm.service
+        dst: /usr/lib/systemd/system/mac-api.service
+        packager: rpm
     # Install and remove scripts
     scripts:
       preinstall: "scripts/preinstall.sh"

@@ -2,13 +2,13 @@ package main
 
 import (
 	"flag"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"strings"
 )
 
-var Log Logger = Logger{}
+var Log = Logger{}
 
 func main() {
 	// Create configuration object
@@ -67,7 +67,6 @@ func main() {
 	if configuration.Logging.Debug {
 		Log.EnableDebug(true)
 	}
-
 	// Create app worker
 	a := App{}
 	a.Initialize("http://standards-oui.ieee.org/oui/oui.csv", configuration.Address, configuration.TimeInterval)
