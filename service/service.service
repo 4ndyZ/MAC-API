@@ -15,6 +15,9 @@ RestartSec=15
 
 ExecStart=/usr/bin/mac-api
 
+# Make sure config file exists
+ExecStartPre=+/bin/mkdir -p /etc/mac-api
+ExecStartPre=+/bin/chown root:mac-api /etc/mac-api
 # Make sure log directory exists
 ExecStartPre=+/bin/mkdir -p /var/log/mac-api
 ExecStartPre=+/bin/chown mac-api:mac-api /var/log/mac-api

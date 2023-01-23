@@ -10,7 +10,8 @@ install() {
 # Package upgrade
 upgrade() {
   if [ -x "/usr/lib/systemd/systemd-update-helper" ]; then
-    /usr/lib/systemd/systemd-update-helper system-reload-restart mac-api.service || :
+    /usr/lib/systemd/systemd-update-helper mark-restart-system-units mac-api.service || :
+    /usr/lib/systemd/systemd-update-helper system-reload-restart || :
   fi
 }
 
