@@ -32,6 +32,8 @@ nfpms:
     formats:
       - deb
       - rpm
+    bindir: /usr/bin
+    section: web
     contents:
       # Config file
       - src: config/config.conf
@@ -42,12 +44,8 @@ nfpms:
           owner: root
           group: mac-api
       # Systemd service file
-      - src: service/service_deb.service
+      - src: service/service.service
         dst: /usr/lib/systemd/system/mac-api.service
-        packager: deb
-      - src: service/service_rpm.service
-        dst: /usr/lib/systemd/system/mac-api.service
-        packager: rpm
     # Install and remove scripts
     scripts:
       preinstall: "scripts/preinstall.sh"
