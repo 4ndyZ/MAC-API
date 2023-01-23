@@ -26,6 +26,7 @@ nfpms:
   - maintainer: AndyZ <info@andycraftz.eu>
     description: MAC Address API
     homepage: https://github.com/4ndyZ/MAC-API
+    package_name: "{{ tolower .ProjectName }}"
     file_name_template: "{{ tolower .ProjectName }}-{{ tolower .Tag }}.{{ .Os }}.{{ tolower .Arch }}"
     license: GPL-3.0
     # Build as deb for Debian based distributions and rpm for RedHat based distributions
