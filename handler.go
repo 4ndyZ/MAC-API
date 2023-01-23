@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
-	"github.com/gorilla/mux"
+	"github.com/gofiber/fiber/v2"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -15,7 +15,12 @@ func (a *App) GetMACData(httpCSV string) ([][]string, error) {
 	if err != nil {
 		return [][]string{}, err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			Log.Logger.Warn().Str("error", err.Error()).Msg("Error while closing the HTTP response body.")
+		}
+	}(resp.Body)
 	reader := csv.NewReader(resp.Body)
 	reader.Comma = ','
 	body, err := reader.ReadAll()
@@ -29,7 +34,7 @@ func (a *App) ParseMACData(body *[][]string) ([]OUI, error) {
 	// Slice with parsed data
 	var ouis []OUI
 	// Regex
-	reg, _ := regexp.Compile(" [^(a-zA-Z0-9)]*$") // Remove spaces after last alphanumeric char
+	reg := regexp.MustCompile(" [^(a-zA-Z0-9)]*$") // Remove spaces after last alphanumeric char
 	// Search for data using Regex
 	for _, row := range (*body)[1:] { // Skip first element because it contains headers
 		// Struct
@@ -45,17 +50,13 @@ func (a *App) ParseMACData(body *[][]string) ([]OUI, error) {
 	return ouis, nil
 }
 
-func (a *App) GetOUI(w http.ResponseWriter, r *http.Request) {
-	input := strings.ToUpper((mux.Vars(r))["oui"]) // Convert OUI to upper case
-
-	// Remove all non-HEX chars
-	reg, _ := regexp.Compile("[^0-9A-F]+")
-	request := reg.ReplaceAllString(input, "")
+func (a *App) GetOUI(c *fiber.Ctx) error {
+	input := strings.ToUpper(c.Params("oui")) // Convert OUI to upper case
+	request := RemoveAllNonHex(input)         // Remove all non-HEX chars
 
 	if len(request) != 6 { // Length of OUI has to be 6
 		Log.Logger.Debug().Str("request-typ", "v1/oui").Str("input", input).Str("error", "Invalid OUI").Msg("Invalid API request")
-		a.respondWithError(w, http.StatusBadRequest, "Invalid OUI")
-		return
+		return a.respondWithError(c, http.StatusBadRequest, "Invalid OUI")
 	}
 
 	request = SplitMAC(request) // Split OUI into format XX-XX-XX
@@ -63,27 +64,21 @@ func (a *App) GetOUI(w http.ResponseWriter, r *http.Request) {
 	// Check if request matches OUI entry in data
 	for _, oui := range *a.Data {
 		if oui.OUI == request {
-			a.respondWithJSON(w, http.StatusOK, oui)
 			Log.Logger.Debug().Str("request-typ", "v1/oui").Str("vendor", oui.Vendor).Str("oui", oui.OUI).Str("typ", oui.Typ).Str("Address", oui.Address).Msg("API request")
-			return
+			return a.respondWithJSON(c, http.StatusOK, oui)
 		}
 	}
-
-	a.respondWithError(w, http.StatusNotFound, "Invalid OUI")
 	Log.Logger.Debug().Str("request-typ", "v1/oui").Str("request", request).Str("error", "Invalid OUI").Msg("Invalid API request")
+	return a.respondWithError(c, http.StatusNotFound, "Invalid OUI")
 }
 
-func (a *App) GetMAC(w http.ResponseWriter, r *http.Request) {
-	input := strings.ToUpper((mux.Vars(r))["mac"]) // Convert OUI to upper case
-
-	// Remove all non-HEX chars
-	reg := regexp.MustCompile("[^0-9A-F]+")
-	request := reg.ReplaceAllString(input, "")
+func (a *App) GetMAC(c *fiber.Ctx) error {
+	input := strings.ToUpper(c.Params("mac")) // Convert OUI to upper case
+	request := RemoveAllNonHex(input)         // Remove all non-HEX chars
 
 	if len(request) != 12 { // Length of OUI has to be 6
 		Log.Logger.Debug().Str("request-typ", "v1/mac").Str("input", input).Str("error", "Invalid OUI").Msg("Invalid API request")
-		a.respondWithError(w, http.StatusBadRequest, "Invalid OUI")
-		return
+		return a.respondWithError(c, http.StatusBadRequest, "Invalid OUI")
 	}
 
 	requestOUI := SplitMAC(request[0:6]) // Get OUI from MAC
@@ -100,33 +95,24 @@ func (a *App) GetMAC(w http.ResponseWriter, r *http.Request) {
 				Typ:     oui.Typ,
 				Address: oui.Address,
 			}
-			a.respondWithJSON(w, http.StatusOK, mac)
 			Log.Logger.Debug().Str("request-typ", "v1/mac").Str("mac", mac.MAC).Str("vendor", mac.Vendor).Str("oui", mac.OUI).Str("typ", mac.Typ).Str("Address", mac.Address).Msg("API request")
-			return
+			return a.respondWithJSON(c, http.StatusOK, mac)
 		}
 	}
-
-	a.respondWithError(w, http.StatusNotFound, "OUI not found")
 	Log.Logger.Debug().Str("request-typ", "v1/mac").Str("request", request).Str("error", "OUI not found").Msg("Invalid API request")
+	return a.respondWithError(c, http.StatusNotFound, "OUI not found")
 }
 
-func (a *App) NotFound(w http.ResponseWriter, r *http.Request) {
-	a.respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+func (a *App) NotFound(c *fiber.Ctx) error {
+	return c.Status(http.StatusBadRequest).JSON(map[string]string{"error": "Invalid request"})
 }
 
 // Send a payload of JSON content
-func (a *App) respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_, err := w.Write(response)
-	if err != nil {
-		return
-	}
+func (a *App) respondWithJSON(c *fiber.Ctx, code int, payload interface{}) error {
+	return c.Status(code).JSON(payload)
 }
 
 // Send a JSON error message
-func (a *App) respondWithError(w http.ResponseWriter, code int, message string) {
-	a.respondWithJSON(w, code, map[string]string{"error": message})
+func (a *App) respondWithError(c *fiber.Ctx, code int, message string) error {
+	return c.Status(code).JSON(map[string]string{"error": message})
 }

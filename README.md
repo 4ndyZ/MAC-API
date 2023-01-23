@@ -19,10 +19,12 @@ Return: JSON
 }
 ```
 Example:
-```curl --include http://localhost:8080/v1/oui/FCFC48
+```
+curl --include http://localhost:8080/v1/oui/FCFC48
 HTTP/1.1 200 OK
+Server: MAC-API
+Date: Mon, 23 Jan 2023 17:33:21 GMT
 Content-Type: application/json
-Date: Mon, 19 Apr 2021 08:50:13 GMT
 Content-Length: 104
 
 {"Vendor":"Apple, Inc.","OUI":"FC-FC-48","Typ":"MA-L","Address":"1 Infinite Loop Cupertino CA US 95014"}
@@ -43,10 +45,12 @@ Return: JSON
 ```
 
 Example:
-```curl --include http://localhost:8080/v1/mac/FCFC48CC3E5D
+```
+curl --include http://localhost:8080/v1/mac/FCFC48CC3E5D
 HTTP/1.1 200 OK
+Server: MAC-API
+Date: Mon, 23 Jan 2023 17:32:50 GMT
 Content-Type: application/json
-Date: Mon, 19 Apr 2021 08:48:33 GMT
 Content-Length: 130
 
 {"MAC":"FC-FC-48-CC-3E-5D","Vendor":"Apple, Inc.","OUI":"FC-FC-48","Typ":"MA-L","Address":"1 Infinite Loop Cupertino CA US 95014"}
@@ -109,4 +113,4 @@ If you want to enable debug messages please change the configuration file  or ru
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
-[GPL-3.0](https://github.com/4ndyZ/MAC-API/blob/master/LICENSE)
+[GPL-3.0](https://github.com/4ndyZ/MAC-API/blob/master/COPYING)

@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -44,7 +43,7 @@ func main() {
 	}
 	// Try to parse the configuration file if exists
 	if config != "" {
-		body, err := ioutil.ReadFile(config)
+		body, err := os.ReadFile(config)
 		if err != nil {
 			Log.Logger.Warn().Str("error", err.Error()).Msg("Error while reading the configuration file.")
 		}
@@ -69,6 +68,6 @@ func main() {
 	}
 	// Create app worker
 	a := App{}
-	a.Initialize("http://standards-oui.ieee.org/oui/oui.csv", configuration.Address, configuration.TimeInterval)
+	a.Initialize("https://standards-oui.ieee.org/oui/oui.csv", configuration.Address, configuration.TimeInterval)
 	a.Run()
 }

@@ -1,10 +1,7 @@
 package main
 
 import (
-	"context"
-	"github.com/gorilla/mux"
-	"net"
-	"net/http"
+	"github.com/gofiber/fiber/v2"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,7 +10,7 @@ import (
 
 // App struct to hold refs and database info
 type App struct {
-	router  *mux.Router
+	server  *fiber.App
 	url     *string
 	address *string
 	refresh *int
@@ -30,10 +27,15 @@ func (a *App) Initialize(url string, address string, refresh int) {
 
 	a.Refresh()
 
-	a.router = mux.NewRouter()
-	a.router.HandleFunc("/v1/oui/{oui}", a.GetOUI).Methods("GET")
-	a.router.HandleFunc("/v1/mac/{mac}", a.GetMAC).Methods("GET")
-	a.router.NotFoundHandler = http.HandlerFunc(a.NotFound)
+	config := fiber.Config{
+		ServerHeader:          "MAC-API",
+		DisableStartupMessage: true,
+	}
+
+	a.server = fiber.New(config)
+	a.server.Get("/v1/oui/:oui", a.GetOUI)
+	a.server.Get("/v1/mac/:mac", a.GetMAC)
+	a.server.All("*", a.NotFound)
 }
 
 func (a *App) Refresh() {
@@ -53,18 +55,11 @@ func (a *App) Refresh() {
 }
 
 func (a *App) Run() {
-
-	ctx, cancel := context.WithCancel(context.Background())
-	httpServer := &http.Server{
-		Addr:        *a.address,
-		Handler:     a.router,
-		BaseContext: func(_ net.Listener) context.Context { return ctx },
-	}
-
 	// Run server
 	go func() {
 		Log.Logger.Info().Msg("API Webserver running ...")
-		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+		err := a.server.Listen(*a.address)
+		if err != nil {
 			// It is fine to use Fatal here because it is not main goroutine
 			Log.Logger.Fatal().Str("error", err.Error()).Msg("API Webserver server error.")
 		}
@@ -78,17 +73,19 @@ func (a *App) Run() {
 	go func() {
 		s := <-sigs
 		Log.Logger.Info().Str("reason", s.String()).Msg("API shutting down ...")
-		gracefullCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelShutdown()
-		if err := httpServer.Shutdown(gracefullCtx); err != nil {
+		err := a.server.ShutdownWithTimeout(5 * time.Second)
+		if err != nil {
 			Log.Logger.Warn().Str("error", err.Error()).Msg("Error while stopping API Webserver.")
 			return
 		}
 		Log.Logger.Info().Msg("API Webserver stopped.")
-		cancel()
 		Log.Logger.Info().Msg("API stopped.")
 		// Exit
-		os.Exit(1)
+		if err != nil {
+			os.Exit(1)
+		} else {
+			os.Exit(0)
+		}
 	}()
 
 	for {

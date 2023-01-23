@@ -1,5 +1,6 @@
 package main
 
+// MAC struct
 type MAC struct {
 	MAC     string
 	Vendor  string
@@ -8,6 +9,7 @@ type MAC struct {
 	Address string
 }
 
+// OUI struct
 type OUI struct {
 	Vendor  string
 	OUI     string
