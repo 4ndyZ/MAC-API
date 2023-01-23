@@ -16,7 +16,6 @@ cleanInstall() {
 
   systemctl daemon-reload
   systemctl unmask mac-api
-  systemctl preset mac-api
 }
 
 upgrade() {
