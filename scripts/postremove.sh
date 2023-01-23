@@ -1,6 +1,7 @@
 # Package uninstall
 uninstall() {
   userdel -f mac-api >/dev/null || :
+  systemctl daemon-reload || :
 }
 
 # Package uninstall and purge
