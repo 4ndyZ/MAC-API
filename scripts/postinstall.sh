@@ -1,27 +1,25 @@
-#!/usr/bin/env sh
-
 systemd_version=$(systemctl --version | head -1 | sed 's/systemd //g' | cut -d" " -f1)
 
-cleanInstall() {
-  # Create the user and group
-  getent group mac-api >/dev/null || groupadd -r mac-api
-  getent passwd mac-api >/dev/null || useradd -r -g mac-api -s /sbin/nologin \
-     -c "User for the MAC-API" mac-api
-
-  # RHEL/CentOS 7 cannot use ExecStartPre=+ to specify the pre start should be run as root
-  # even if you want your service to run as non root.
-  if [ "${systemd_version}" -lt 231 ]; then
-    sed -i "s/=+/=/g" /usr/lib/systemd/system/mac-api.service
+# Initial package installation
+install() {
+  if [ -x "/usr/lib/systemd/systemd-update-helper" ]; then
+    /usr/lib/systemd/systemd-update-helper install-system-units mac-api.service || :
   fi
-
-  systemctl daemon-reload
-  systemctl unmask mac-api
 }
 
+# Package upgrade
 upgrade() {
-  systemctl daemon-reload
-  # Restart the service if it is running
-  systemctl is-active --quiet mac-api && systemctl restart mac-api
+  if [ -x "/usr/lib/systemd/systemd-update-helper" ]; then
+    /usr/lib/systemd/systemd-update-helper system-reload-restart mac-api.service || :
+  fi
+}
+
+# Fix for old distributions that cannot use ExecStartPre=+ to specify the pre start should be run as root
+# even if you want your service to run as non root.
+fix_old() {
+  if [ "${systemd_version}" -lt 231 ]; then
+    sed -i "s/=+/=/g" /etc/systemd/system/mac-api.service || :
+  fi
 }
 
 action="$1"
@@ -35,12 +33,11 @@ fi
 
 case "$action" in
   "1" | "install")
-    cleanInstall
+    fix_old
+    install
     ;;
   "2" | "upgrade")
+    fix_old
     upgrade
     ;;
-  *)
-    cleanInstall
-  ;;
 esac

@@ -1,7 +1,8 @@
 [Unit]
 Description=MAC-API Service
 ConditionPathExists=/usr/bin/mac-api
-After=network.target
+After=network-online.target
+Wants=network-online.target
 StartLimitIntervalSec=60
 
 [Service]
@@ -10,7 +11,7 @@ User=mac-api
 Group=mac-api
 
 Restart=on-failure
-RestartSec=10
+RestartSec=15
 
 ExecStart=/usr/bin/mac-api
 

@@ -1,34 +1,29 @@
-#!/usr/bin/env sh
-
-remove() {
-  userdel -f mac-api >/dev/null
-  systemctl daemon-reload
+# Package uninstall
+uninstall() {
+  userdel -f mac-api >/dev/null || :
 }
 
+# Package uninstall and purge
 purge() {
-  remove
-  rm -drf /etc/mac-api
-  rm -drf /var/log/mac-api
+  rm -drf /etc/mac-api || :
+  rm -drf /var/log/mac-api || :
 }
 
+# Package upgrade
 upgrade() {
-  systemctl daemon-reload
-  # Restart the service if it is running
-  systemctl is-active --quiet mac-api && systemctl restart mac-api
+  :
 }
 
 action="$1"
 case "$action" in
   "0" | "remove")
-    remove
+    uninstall
     ;;
   "1" | "upgrade")
     upgrade
     ;;
   "purge")
+    uninstall
     purge
-    ;;
-  *)
-    remove
     ;;
 esac
