@@ -48,7 +48,8 @@ nfpms:
         dst: /usr/lib/systemd/system/mac-api.service
     # Install and remove scripts
     scripts:
-      preinstall: "scripts/preinstall.sh"
+      postinstall: "scripts/postinstall.sh"
+      preremove: "scripts/preremove.sh"
       postremove: "scripts/postremove.sh"
     overrides:
       rpm:
