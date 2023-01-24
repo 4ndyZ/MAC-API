@@ -88,7 +88,7 @@ jobs:
   upload-to-repository:
     name: Upload to repository
     needs: [ build ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     strategy:
       matrix:
         package-format: [
@@ -135,20 +135,31 @@ jobs:
           name: packages
           path: packages
 
-      - name: Upload using rsync
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.REPOSITORY_SSH_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          if_key_exists: fail
+
+      - name: Create directory
         run: |
-          rsync -avz --delete --no-perms --no-owner --no-group \
-            packages/${{ matrix.package-format.path }} \
+          ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+            "mkdir -p ${{ secrets.REPOSITORY_PATH }}/${{ matrix.package-format.path_in_repo }}"
+
+      - name: Upload using rsync over SSH
+        run: |
+          rsync -avz -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" packages/${{ matrix.package-format.path }} \
             ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/${{ matrix.package-format.path_in_repo }}
 
       - name: Update RPM repository
         if: startsWith(matrix.package-format.name, 'rpm')
         run: |
-          ssh ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+          ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             "createrepo --update ${{ secrets.REPOSITORY_PATH }}/${{ matrix.package-format.path_in_repo }}"
 
       - name: Update DEB repository
         if: startsWith(matrix.package-format.name, 'deb')
         run: |
-          ssh ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+          ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             ""
