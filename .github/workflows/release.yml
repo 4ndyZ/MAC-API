@@ -102,12 +102,15 @@ jobs:
           name: packages
           path: packages
 
-      - name: Install SSH key
-        uses: shimataro/ssh-key-action@v2
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
         with:
-          key: ${{ secrets.REPOSITORY_SSH_KEY }}
-          known_hosts: ${{ secrets.KNOWN_HOSTS }}
-          if_key_exists: fail
+          ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
+
+      - name: Add repository host to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
 
       - name: Upload using rsync over SSH
         run: |
@@ -115,9 +118,7 @@ jobs:
           
           for package in $packages; do
             package_name=$(basename $package)
-            echo "$package_name"
             package_type=${package_name##*.}
-            echo "$package_type"
             package_arch=${package_name%.$package_type}
             package_arch=${package_arch##*.}
           
@@ -126,6 +127,7 @@ jobs:
             "mkdir -p ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch"
         
             # Upload package
+            echo "Uploading $package to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/"
             rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
             ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/
           done
@@ -136,9 +138,7 @@ jobs:
   
           for package in $packages; do
             package_name=$(basename $package)
-            echo "$package_name"
             package_type=${package_name##*.}
-            echo "$package_type"
             package_arch=${package_name%.$package_type}
             package_arch=${package_arch##*.}
         
