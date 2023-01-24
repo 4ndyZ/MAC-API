@@ -75,7 +75,7 @@ jobs:
         with:
           name: packages
           path: |
-            goreleaser/dist/*
+            dist/*
           if-no-files-found: error
 
   upload-to-repository:
