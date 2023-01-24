@@ -1,6 +1,7 @@
 name: "Test and release"
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
 
@@ -55,7 +56,8 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
         with:
           version: latest
-          args: --skip-publish --skip-validate --rm-dist
+          # args: --skip-publish --skip-validate --rm-dist
+          args: --rm-dist --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -64,6 +66,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v4
         if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
         with:
+          project_name: ${{ github.repository }}
           version: latest
           args: release --rm-dist
         env:
