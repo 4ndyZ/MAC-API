@@ -32,7 +32,7 @@ nfpms:
     description: MAC Address API
     homepage: https://github.com/4ndyZ/MAC-API
     file_name_template: >-
-      {{ tolower .ProjectName }}-{{ tolower .Tag }}.{{ .Os }}.{{ tolower .Arch }}
+      {{ tolower .ProjectName }}_{{ tolower .Tag }}+{{ .Os }}_{{ tolower .Arch }}
     license: GPL-3.0
     # Build as deb for Debian based distributions and rpm for RedHat based distributions
     formats:
@@ -66,6 +66,13 @@ nfpms:
           {{- else if eq .Arch "arm64" }}aarch64
           {{- else }}{{ tolower .Arch }}
           {{- end }}
+    # deb:
+    #   signature:
+    #     key_file: "{{ .Env.GPG_KEY_PATH }}"
+    #     type: origin
+    # rpm:
+    #   signature:
+    #     key_file: "{{ .Env.GPG_KEY_PATH }}"
 release:
   # Set name of the release on GitHub
   name_template: "Release v{{ .Version }}"

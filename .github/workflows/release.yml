@@ -50,13 +50,19 @@ jobs:
           cache: true
           check-latest: true
 
+      #- name: Import GPG key
+      #  id: import_gpg
+      #  uses: crazy-max/ghaction-import-gpg@v5
+      #  with:
+      #    gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+      #    passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
       - name: Run GoReleaser snapshot
         id: goreleaser-snapshot
         uses: goreleaser/goreleaser-action@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
         with:
           version: latest
-          # args: --skip-publish --skip-validate --rm-dist
           args: --rm-dist --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -106,6 +112,7 @@ jobs:
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
+          log-public-key: false
 
       - name: Add repository host to known hosts
         run: |
@@ -127,7 +134,7 @@ jobs:
             "mkdir -p ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch"
         
             # Upload package
-            echo "Uploading $package to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/"
+            echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/"
             rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
             ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/
           done
