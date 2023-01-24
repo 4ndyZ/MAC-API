@@ -75,7 +75,11 @@ jobs:
         with:
           name: packages
           path: |
-            dist/*
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
+            dist/*.zip
+            dist/Checksums.txt
           if-no-files-found: error
 
   upload-to-repository:
