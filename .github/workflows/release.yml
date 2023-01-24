@@ -5,29 +5,37 @@ on:
   push:
 
 jobs:
-  build:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      go-version: ${{ steps.go-version.outputs.GO_VERSION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get Go version from go.mod
+        id: go-version
+        run: sed -En 's/^go[[:space:]]+([[:digit:].]+)$/GO_VERSION=\1/p' go.mod >> $GITHUB_OUTPUT
+
+  test:
+    name: Test
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Get Go version from go.mod
-        run: sed -En 's/^go[[:space:]]+([[:digit:].]+)$/GO_VERSION=\1/p' go.mod >> $GITHUB_ENV
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         id: setup_go
         uses: actions/setup-go@v3
         with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Cache Go modules
-        id: cache_go
-        uses: actions/cache@v3
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version: ${{ needs.prepare.outputs.go-version }}
+          cache: true
 
       - name: Tests
         id: test
@@ -35,11 +43,40 @@ jobs:
           go mod tidy
           go test -v ./...
 
+  build:
+    needs: [ prepare, test ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get all tags
+        run: git fetch --force --tags
+
+      - name: Set up Go
+        id: setup_go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ needs.prepare.outputs.go-version }}
+          cache: true
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v4
         if: success() && startsWith(github.ref, 'refs/tags/')
         with:
           version: latest
           args: release --rm-dist
+          workdir: goreleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        with:
+          name: packages
+          path: |
+            goreleaser/dist/*
+          if-no-files-found: error
