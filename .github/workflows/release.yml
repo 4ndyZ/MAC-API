@@ -5,25 +5,8 @@ on:
   push:
 
 jobs:
-  prepare:
-    name: Prepare
-    runs-on: ubuntu-latest
-    outputs:
-      go-version: ${{ steps.go-version.outputs.GO_VERSION }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Get Go version from go.mod
-        id: go-version
-        run: |
-          sed -En 's/^go[[:space:]]+([[:digit:].]+)$/GO_VERSION=\1/p' go.mod >> $GITHUB_OUTPUT
-
   test:
     name: Test
-    needs: prepare
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -35,8 +18,9 @@ jobs:
         id: setup_go
         uses: actions/setup-go@v3
         with:
-          go-version: ${{ needs.prepare.outputs.go-version }}
+          go-version-file: 'go.mod'
           cache: true
+          check-latest: true
 
       - name: Tests
         id: test
@@ -46,7 +30,7 @@ jobs:
 
   build:
     name: Build
-    needs: [ prepare, test ]
+    needs: [ test ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -61,8 +45,9 @@ jobs:
         id: setup_go
         uses: actions/setup-go@v3
         with:
-          go-version: ${{ needs.prepare.outputs.go-version }}
+          go-version-file: 'go.mod'
           cache: true
+          check-latest: true
 
       - name: Run GoReleaser snapshot
         id: goreleaser-snapshot
