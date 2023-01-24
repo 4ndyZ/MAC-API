@@ -93,3 +93,74 @@ jobs:
           path: |
             goreleaser/dist/*
           if-no-files-found: error
+
+  upload-to-repository:
+    name: Upload to repository
+    needs: [ prepare, build ]
+    on:
+      push:
+        branches: [ "main" ]
+        tags: [ "v*" ]
+    strategy:
+      matrix:
+        package-format: [
+          {
+            "name": "deb arm",
+            "path": "goreleaser/dist/*arm.deb",
+            "path_in_repo": "deb/arm/",
+          },
+          {
+            "name": "deb arm64",
+            "path": "goreleaser/dist/*arm64.deb",
+            "path_in_repo": "deb/arm64/",
+          },
+          {
+            "name": "deb amd64",
+            "path": "goreleaser/dist/*amd64.deb",
+            "path_in_repo": "deb/amd64/",
+          },
+          {
+            "name": "rpm armhfp",
+            "path": "goreleaser/dist/*.arm.rpm",
+            "path_in_repo": "rpm/armhfp/"
+          },
+          {
+            "name": "rpm aarch64",
+            "path": "goreleaser/dist/*.aarch64.rpm",
+            "path_in_repo": "rpm/aarch64/"
+          },
+          {
+            "name": "rpm x86_64",
+            "path": "goreleaser/dist/*.x86_64.rpm",
+            "path_in_repo": "rpm/x86_64/"
+          },]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: packages
+          path: packages
+
+      - name: Upload using rsync
+        run: |
+          rsync -avz --delete --no-perms --no-owner --no-group \
+            packages/${{ matrix.package-format.path }} \
+            ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/${{ matrix.package-format.path_in_repo }}
+
+      - name: Update RPM repository
+        if: startsWith(matrix.package-format.name, 'rpm')
+        run: |
+          ssh ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+            "createrepo --update ${{ secrets.REPOSITORY_PATH }}/${{ matrix.package-format.path_in_repo }}"
+
+      - name: Update DEB repository
+        if: startsWith(matrix.package-format.name, 'deb')
+        run: |
+          ssh ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+            ""
