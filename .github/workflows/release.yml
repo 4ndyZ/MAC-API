@@ -77,8 +77,7 @@ jobs:
       - name: Run GoReleaser release
         id: goreleaser-release
         uses: goreleaser/goreleaser-action@v4
-        if: ${{ startsWith(github.ref, 'refs/tags/v*') \
-          && github.branch == 'main' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
         with:
           version: latest
           args: release --rm-dist
@@ -87,8 +86,7 @@ jobs:
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
-        if: ${{ steps.goreleaser-release.outcome == 'success' \
-          || steps.goreleaser-snapshot.outcome == 'success' }}
+        if: ${{ steps.goreleaser-release.outcome == 'success' || steps.goreleaser-snapshot.outcome == 'success' }}
         with:
           name: packages
           path: |
@@ -98,8 +96,7 @@ jobs:
   upload-to-repository:
     name: Upload to repository
     needs: [ build ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') \
-      && github.branch == 'main' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     strategy:
       matrix:
         package-format: [
