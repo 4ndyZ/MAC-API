@@ -70,7 +70,7 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
         with:
           version: latest
-          args: --skip-publish --rm-dist
+          args: --skip-publish --skip-validate --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
