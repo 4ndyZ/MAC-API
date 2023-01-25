@@ -122,7 +122,19 @@ jobs:
         run: |
           # Setup .rpmmacros
           cat <<EOF > ~/.rpmmacros
-          ${{ secrets.RPMMACROS }}
+          %_signature gpg
+          %_gpg_name ${{ steps.import_gpg.outputs.fingerprint }}
+          %_gpgbin /usr/bin/gpg2
+          %__gpg_sign_cmd     %{__gpg} \
+            gpg \
+            --pinentry-mode loopback \
+            --batch \
+            --verbose \
+            --no-armor \
+            --no-secmem-warning \
+            --digest-algo sha512 \
+            -u "%{_gpg_name}" \
+            -sbo %{__signature_filename} %{__plaintext_filename}
           EOF
           for file in dist/*.rpm; do
             rpm --addsign $file
@@ -132,7 +144,7 @@ jobs:
         id: upload_artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: release-packages
+          name: packages-release
           path: |
             dist/*.deb
             dist/*.rpm
@@ -191,7 +203,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
-          name: packages
+          name: packages-release
           path: packages
 
       - name: Set up SSH
