@@ -31,8 +31,7 @@ jobs:
   build-snapshot:
     name: Build snapshot
     needs: [ test ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') }}
-    # if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
+    if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -106,8 +105,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v4
         with:
           version: latest
-          args: --rm-dist --snapshot
-          #args: release --rm-dist
+          args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -157,7 +155,7 @@ jobs:
   create-github-release:
     name: Create GitHub release
     needs: [ build-release ]
-    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -220,7 +218,7 @@ jobs:
   upload-to-repository:
     name: Upload to repository
     needs: [ build-release ]
-    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
