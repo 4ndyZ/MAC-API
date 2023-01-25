@@ -71,7 +71,7 @@ jobs:
   build-release:
     name: Build release
     needs: [ test ]
-    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
     outputs:
       gpg_fingerprint: ${{ steps.import_gpg.outputs.fingerprint }}
