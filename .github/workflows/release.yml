@@ -127,11 +127,10 @@ jobs:
           %_gpgbin /usr/bin/gpg2
           %__gpg_sign_cmd     %{__gpg} \
             gpg \
-            --pinentry-mode loopback \
             --batch \
+            --no-tty \
             --verbose \
             --no-armor \
-            --no-secmem-warning \
             --digest-algo sha512 \
             -u "%{_gpg_name}" \
             -sbo %{__signature_filename} %{__plaintext_filename}
@@ -164,12 +163,28 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get version and remove v prefix if exists
+        id: get_version
+        run: |
+          version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\/|v//')
+          echo "::set-output name=version::$version"
+
+      - name: Check if prerelease
+        id: prerelease
+        run: |
+          if [[ ${{ github.ref }} == *"rc"* ]] || [[ ${{ github.ref }} == *"beta"* ]] || \
+            [[ ${{ github.ref }} == *"alpha"* ]]; then
+            echo "::set-output name=prerelease::true"
+          else
+            echo "::set-output name=prerelease::false"
+          fi
+
       - name: Create change log using git log
         id: changelog
         run: |
           cat <<EOF > CHANGELOG.md
           ## Changelog
-          $(git log --graph --pretty=format:'%h - %s @%an' --abbrev-commit $(git describe --tags --abbrev=0)..HEAD)
+          $(git log --graph --pretty=format:'%h - %s (@%an)' --abbrev-commit $(git describe --tags --abbrev=0)..HEAD)
           EOF
 
       - name: Download artifacts
@@ -184,8 +199,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref }}
-          name: ${{ github.ref }}
+          name: Release v${{ steps.get_version.outputs.version }}
           body_path: CHANGELOG.md
+          prerelease: ${{ steps.prerelease.outputs.prerelease }}
           files: |
             packages/*.deb
             packages/*.rpm
