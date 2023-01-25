@@ -64,5 +64,6 @@ nfpms:
           {{ tolower .ProjectName }}-{{ tolower .Version }}-1.{{ .Os }}.
           {{- if eq .Arch "amd64" }}x86_64
           {{- else if eq .Arch "arm64" }}aarch64
+          {{- else if eq .Arch "arm" }}armhfp
           {{- else }}{{ tolower .Arch }}
           {{- end }}
