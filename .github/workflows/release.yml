@@ -132,7 +132,7 @@ jobs:
             --no-armor \
             --digest-algo sha512 \
             --local-user "%{_gpg_name}" \
-            --detach-sign
+            --detach-sign \
             --output %{__signature_filename} %{__plaintext_filename}
           EOF
           for file in dist/*.rpm; do
