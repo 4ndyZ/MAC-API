@@ -289,7 +289,8 @@ jobs:
               --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
               --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
               --armor \
-              --detach-sign ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/repodata/repomd.xml"   
+              --detach-sign \
+              --yes ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/repodata/repomd.xml"   
           done
 
       - name: Update DEB repository
