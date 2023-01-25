@@ -2,7 +2,6 @@ name: "Test and release"
 
 on:
   workflow_dispatch:
-  pull_request:
   push:
 
 jobs:
@@ -129,7 +128,6 @@ jobs:
             gpg \
             --batch \
             --no-tty \
-            --verbose \
             --no-armor \
             --digest-algo sha512 \
             -u "%{_gpg_name}" \
@@ -163,20 +161,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get version and remove v prefix if exists
+      - name: Get version
         id: get_version
         run: |
-          version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\/|v//')
-          echo "::set-output name=version::$version"
+          version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\/// | sed -e 's/^refs\/heads\///')
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Check if prerelease
         id: prerelease
         run: |
-          if [[ ${{ github.ref }} == *"rc"* ]] || [[ ${{ github.ref }} == *"beta"* ]] || \
-            [[ ${{ github.ref }} == *"alpha"* ]]; then
-            echo "::set-output name=prerelease::true"
+          # Check for non semver tags
+          if [[ {{ steps.get_version.outputs.version }} != "v"* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          if [[ ${{ steps.get_version.outputs.version }} == *"rc"* ]] || [[ ${{ steps.get_version.outputs.version }} == *"beta"* ]] || \
+            [[ ${{ steps.get_version.outputs.version }} == *"alpha"* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=prerelease::false"
+            echo "prerelease=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create change log using git log
@@ -199,7 +203,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref }}
-          name: Release v${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
           body_path: CHANGELOG.md
           prerelease: ${{ steps.prerelease.outputs.prerelease }}
           files: |
@@ -269,7 +273,13 @@ jobs:
             # Update rpm repository
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             "createrepo --update ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch && \
-            gpghome=/home/${{ secrets.REPOSITORY_USER }}/.gnupg gpg2 --detach-sign --armor ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/repodata/repomd.xml"
+            gpg2 \
+              --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+              --batch \
+              --yes \
+              --passphrase-file=/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase.txt \
+              --detach-sign \
+              --armor ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/repodata/repomd.xml"   
           done
 
       - name: Update DEB repository
