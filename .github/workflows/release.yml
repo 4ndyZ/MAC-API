@@ -216,7 +216,6 @@ jobs:
             packages/*.tar.gz
             packages/*.zip
             packages/Checksums.txt
-          
 
   upload-to-repository:
     name: Upload to repository
