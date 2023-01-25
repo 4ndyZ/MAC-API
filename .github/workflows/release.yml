@@ -92,7 +92,7 @@ jobs:
         run: |
           # Setup .rpmmacros
           cat <<EOF > ~/.rpmmacros
-          ${{ RPMMACROS }}
+          ${{ secrets.RPMMACROS }}
           EOF
           for file in dist/*.rpm; do
             rpm --addsign $file
