@@ -164,7 +164,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\/// | sed -e 's/^refs\/heads\///')
+          version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\///' | sed -e 's/^refs\/heads\///')
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Check if prerelease
@@ -246,8 +246,13 @@ jobs:
           for package in $packages; do
             package_name=$(basename $package)
             package_type=${package_name##*.}
-            package_arch=${package_name%.$package_type}
-            package_arch=${package_arch##*.}
+            if [[ $package_type == "rpm" ]]; then
+              package_arch=${package_name%.$package_type}
+              package_arch=${package_arch##*.}
+            elif [[ $package_type == "deb" ]]; then
+              package_arch=${package_name%.$package_type}
+              package_arch=${package_arch##*_}
+            fi
           
             # Create directory if not exists
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
@@ -273,11 +278,10 @@ jobs:
             # Update rpm repository
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             "createrepo --update ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch && \
-            gpg2 \
-              --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+            gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
               --batch \
               --yes \
-              --passphrase-file=/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase.txt \
+              --passphrase='${{ secrets.REPOSITORY_GPG_PASSPHRASE }}' \
               --detach-sign \
               --armor ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/repodata/repomd.xml"   
           done
