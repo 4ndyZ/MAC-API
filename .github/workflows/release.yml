@@ -50,12 +50,16 @@ jobs:
           cache: true
           check-latest: true
 
-      #- name: Import GPG key
-      #  id: import_gpg
-      #  uses: crazy-max/ghaction-import-gpg@v5
-      #  with:
-      #    gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-      #    passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Install rpm
+        run: |
+          apt-get install rpm
 
       - name: Run GoReleaser snapshot
         id: goreleaser-snapshot
@@ -78,6 +82,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      #- name: Sign deb packages
+      #  run: |
+      #    for file in dist/*.deb; do
+      #      dpkg-sig --sign builder $file
+      #    done
+
+      - name: Sign rpm packages
+        run: |
+          # Setup .rpmmacros
+          cat <<EOF > ~/.rpmmacros
+          ${{ RPMMACROS }}
+          EOF
+          for file in dist/*.rpm; do
+            rpm --addsign $file
+          done
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         if: ${{ steps.goreleaser-release.outcome == 'success' || steps.goreleaser-snapshot.outcome == 'success' }}
@@ -89,7 +109,35 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/Checksums.txt
+            dist/CHANGELOG.md
           if-no-files-found: error
+
+  create-github-release:
+    name: Create GitHub release
+    needs: [ build ]
+    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: packages
+          path: packages
+
+      - name: Create GitHub release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          name: ${{ github.ref }}
+          body_path: packages/CHANGELOG.md
+          files: |
+            packages/*.deb
+            packages/*.rpm
+            packages/*.tar.gz
+            packages/*.zip
+            packages/Checksums.txt
+          
 
   upload-to-repository:
     name: Upload to repository
@@ -97,11 +145,6 @@ jobs:
     #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -151,7 +194,8 @@ jobs:
         
             # Update rpm repository
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-            "createrepo --update ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch"
+            "createrepo --update ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch && \
+            gpghome=/home/${{ secrets.REPOSITORY_USER }}/.gnupg gpg2 --detach-sign --armor ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/repodata/repomd.xml"
           done
 
       - name: Update DEB repository

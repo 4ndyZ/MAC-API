@@ -66,14 +66,3 @@ nfpms:
           {{- else if eq .Arch "arm64" }}aarch64
           {{- else }}{{ tolower .Arch }}
           {{- end }}
-    # deb:
-    #   signature:
-    #     key_file: "{{ .Env.GPG_KEY_PATH }}"
-    #     type: origin
-    # rpm:
-    #   signature:
-    #     key_file: "{{ .Env.GPG_KEY_PATH }}"
-release:
-  # Set name of the release on GitHub
-  name_template: "Release v{{ .Version }}"
-  prerelease: auto
