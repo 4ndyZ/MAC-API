@@ -59,7 +59,7 @@ jobs:
 
       - name: Install rpm
         run: |
-          apt-get install rpm
+          sudo apt-get install rpm
 
       - name: Run GoReleaser snapshot
         id: goreleaser-snapshot
