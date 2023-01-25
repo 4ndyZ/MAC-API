@@ -15,7 +15,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Setup Go
         id: setup_go
         uses: actions/setup-go@v3
         with:
@@ -40,7 +40,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Setup Go
         id: setup_go
         uses: actions/setup-go@v3
         with:
@@ -80,7 +80,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Setup Go
         id: setup_go
         uses: actions/setup-go@v3
         with:
@@ -95,9 +95,9 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Install rpm
+      - name: Install required packages for deb and rpm signing
         run: |
-          sudo apt-get install rpm
+          sudo apt-get install rpm dpkg-sig -y
 
       - name: Run GoReleaser release
         id: goreleaser-release
@@ -111,12 +111,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sign deb packages
+        id: sign_deb
         run: |
           for file in dist/*.deb; do
             dpkg-sig --sign builder -k ${{ steps.import_gpg.outputs.fingerprint }} $file
           done
 
       - name: Sign rpm packages
+        id: sign_rpm
         run: |
           # Setup .rpmmacros
           cat <<EOF > ~/.rpmmacros
@@ -127,6 +129,7 @@ jobs:
           done
 
       - name: Upload artifacts
+        id: upload_artifacts
         uses: actions/upload-artifact@v3
         with:
           name: release-packages
@@ -158,6 +161,7 @@ jobs:
           EOF
 
       - name: Download artifacts
+        id: download_artifacts
         uses: actions/download-artifact@v3
         with:
           name: packages-release
@@ -191,6 +195,7 @@ jobs:
           path: packages
 
       - name: Set up SSH
+        id: setup_ssh
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
@@ -202,6 +207,7 @@ jobs:
           echo "${{ secrets.KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
 
       - name: Upload using rsync over SSH
+        id: upload_to_repository
         run: |
           packages=$(find packages -type f \( -name "*.rpm" -o -name "*.deb" \))
           
@@ -222,6 +228,7 @@ jobs:
           done
 
       - name: Update RPM repositories
+        id: update_rpm_repositories
         run: |
           packages=$(find packages -type f -name "*.rpm")
   
@@ -238,6 +245,7 @@ jobs:
           done
 
       - name: Update DEB repository
+        id: update_deb_repository
         run: |
           # Update deb repository
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
