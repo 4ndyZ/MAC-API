@@ -32,7 +32,8 @@ jobs:
   build-snapshot:
     name: Build snapshot
     needs: [ test ]
-    if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v*') }}
+    # if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -103,9 +104,9 @@ jobs:
         id: goreleaser-release
         uses: goreleaser/goreleaser-action@v4
         with:
-          project_name: ${{ github.repository }}
           version: latest
-          args: release --rm-dist
+          args: --rm-dist --snapshot
+          #args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
