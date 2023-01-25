@@ -129,7 +129,7 @@ jobs:
           %__gpg_sign_cmd     %{__gpg} \
             gpg \
             --batch \
-            --no-tty \
+            --pinentry-mode loopback \
             --verbose \
             --digest-algo sha512 \
             --local-user "%{_gpg_name}" \
@@ -283,7 +283,7 @@ jobs:
             "createrepo --update ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch && \
             gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
               --batch \
-              --no-tty \
+              --pinentry-mode loopback \
               --verbose \
               --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
               --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
