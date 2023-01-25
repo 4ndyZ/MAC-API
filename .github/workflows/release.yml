@@ -29,9 +29,10 @@ jobs:
           go mod tidy
           go test -v ./...
 
-  build:
-    name: Build
+  build-snapshot:
+    name: Build snapshot
     needs: [ test ]
+    if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -39,8 +40,45 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get all tags
-        run: git fetch --force --tags
+      - name: Set up Go
+        id: setup_go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+          check-latest: true
+
+      - name: Run GoReleaser snapshot
+        id: goreleaser-snapshot
+        uses: goreleaser/goreleaser-action@v4
+        with:
+          version: latest
+          args: --rm-dist --snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: packages-snapshot
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
+            dist/*.zip
+            dist/Checksums.txt
+          if-no-files-found: error
+
+  build-release:
+    name: Build release
+    needs: [ test ]
+    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         id: setup_go
@@ -61,16 +99,6 @@ jobs:
         run: |
           sudo apt-get install rpm
 
-      - name: Run GoReleaser snapshot
-        id: goreleaser-snapshot
-        uses: goreleaser/goreleaser-action@v4
-        if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
-        with:
-          version: latest
-          args: --rm-dist --snapshot
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Run GoReleaser release
         id: goreleaser-release
         uses: goreleaser/goreleaser-action@v4
@@ -82,11 +110,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      #- name: Sign deb packages
-      #  run: |
-      #    for file in dist/*.deb; do
-      #      dpkg-sig --sign builder $file
-      #    done
+      - name: Sign deb packages
+        run: |
+          for file in dist/*.deb; do
+            dpkg-sig --sign builder -k ${{ steps.import_gpg.outputs.fingerprint }} $file
+          done
 
       - name: Sign rpm packages
         run: |
@@ -100,28 +128,39 @@ jobs:
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
-        if: ${{ steps.goreleaser-release.outcome == 'success' || steps.goreleaser-snapshot.outcome == 'success' }}
         with:
-          name: packages
+          name: release-packages
           path: |
             dist/*.deb
             dist/*.rpm
             dist/*.tar.gz
             dist/*.zip
             dist/Checksums.txt
-            dist/CHANGELOG.md
           if-no-files-found: error
 
   create-github-release:
     name: Create GitHub release
-    needs: [ build ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    needs: [ build-release ]
+    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Create change log using git log
+        id: changelog
+        run: |
+          cat <<EOF > CHANGELOG.md
+          ## Changelog
+          $(git log --graph --pretty=format:'%h - %s @%an' --abbrev-commit $(git describe --tags --abbrev=0)..HEAD)
+          EOF
+
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
-          name: packages
+          name: packages-release
           path: packages
 
       - name: Create GitHub release
@@ -130,7 +169,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           name: ${{ github.ref }}
-          body_path: packages/CHANGELOG.md
+          body_path: CHANGELOG.md
           files: |
             packages/*.deb
             packages/*.rpm
@@ -141,7 +180,7 @@ jobs:
 
   upload-to-repository:
     name: Upload to repository
-    needs: [ build ]
+    needs: [ build-release ]
     #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
     steps:
@@ -200,5 +239,6 @@ jobs:
 
       - name: Update DEB repository
         run: |
+          # Update deb repository
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             ""

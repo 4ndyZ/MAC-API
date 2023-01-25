@@ -15,7 +15,7 @@ checksum:
   name_template: "Checksums.txt"
 archives:
   - name_template: >-
-      {{ tolower .ProjectName }}-{{ tolower .Tag }}.
+      {{ tolower .ProjectName }}-{{ tolower .Version }}.
       {{- if eq .Os "darwin" }}macOS
       {{- else }}{{ .Os }}
       {{- end }}.
@@ -32,7 +32,7 @@ nfpms:
     description: MAC Address API
     homepage: https://github.com/4ndyZ/MAC-API
     file_name_template: >-
-      {{ tolower .ProjectName }}_{{ tolower .Tag }}+{{ .Os }}_{{ tolower .Arch }}
+      {{ tolower .ProjectName }}_{{ tolower .Version }}+{{ .Os }}_{{ tolower .Arch }}
     license: GPL-3.0
     # Build as deb for Debian based distributions and rpm for RedHat based distributions
     formats:
@@ -61,7 +61,7 @@ nfpms:
     overrides:
       rpm:
         file_name_template: >-
-          {{ tolower .ProjectName }}-{{ tolower .Tag }}.{{ .Os }}.
+          {{ tolower .ProjectName }}-{{ tolower .Version }}-1.{{ .Os }}.
           {{- if eq .Arch "amd64" }}x86_64
           {{- else if eq .Arch "arm64" }}aarch64
           {{- else }}{{ tolower .Arch }}
