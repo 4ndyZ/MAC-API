@@ -305,27 +305,27 @@ jobs:
         
             # Update deb repository
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-            "apt-ftparchive packages ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch > ${{ secrets.REPOSITORY_PATH }}/deb/Contents-$package_arch && \
-             gzip -c ${{ secrets.REPOSITORY_PATH }}/deb/Contents-$package_arch > ${{ secrets.REPOSITORY_PATH }}/deb/Contents-$package_arch.gz"
+            "apt-ftparchive packages ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch > ${{ secrets.REPOSITORY_PATH }}/$package_type/Contents-$package_arch && \
+            gzip -c ${{ secrets.REPOSITORY_PATH }}/$package_type/Contents-$package_arch > ${{ secrets.REPOSITORY_PATH }}/$package_type/Contents-$package_arch.gz"
           done
           
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-          "apt-ftparchive release ${{ secrets.REPOSITORY_PATH }} > ${{ secrets.REPOSITORY_PATH }}/Release && \
-           gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-             --batch \
-             --pinentry-mode loopback \
-             --verbose \
-             --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-             --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-             --sign\
-             --detach-sign \
-             --yes ${{ secrets.REPOSITORY_PATH }}/Release && \
-           gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-             --batch \
-             --pinentry-mode loopback \
-             --verbose \
-             --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-             --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-             --clearsign \
-             --output ${{ secrets.REPOSITORY_PATH }}/deb/InRelease \
-             --yes ${{ secrets.REPOSITORY_PATH }}/deb/Release"
+          "package_type=deb && \
+          apt-ftparchive release ${{ secrets.REPOSITORY_PATH }} > ${{ secrets.REPOSITORY_PATH }}/$package_type/Release && \
+          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+            --batch \
+            --pinentry-mode loopback \
+            --verbose \
+            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+            --sign \
+            --yes ${{ secrets.REPOSITORY_PATH }}/$package_type/Release && \
+          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+            --batch \
+            --pinentry-mode loopback \
+            --verbose \
+            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+            --clearsign \
+            --output ${{ secrets.REPOSITORY_PATH }}/$package_type/InRelease \
+            --yes ${{ secrets.REPOSITORY_PATH }}/$package_type/Release"
