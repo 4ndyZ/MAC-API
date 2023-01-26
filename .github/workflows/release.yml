@@ -31,7 +31,8 @@ jobs:
   build-snapshot:
     name: Build snapshot
     needs: [ test ]
-    if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
+    #if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v*') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -71,7 +72,7 @@ jobs:
   build-release:
     name: Build release
     needs: [ test ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
     outputs:
       gpg_fingerprint: ${{ steps.import_gpg.outputs.fingerprint }}
@@ -155,7 +156,7 @@ jobs:
   create-github-release:
     name: Create GitHub release
     needs: [ build-release ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -290,9 +291,40 @@ jobs:
               --yes ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/repodata/repomd.xml"   
           done
 
-      - name: Update DEB repository
+      - name: Update DEB repositories
         id: update_deb_repository
         run: |
-          # Update deb repository
+          packages=$(find packages -type f -name "*.deb")
+          
+          for package in $packages; do
+            package_name=$(basename $package)
+            package_type=${package_name##*.}
+            package_arch=${package_name%.$package_type}
+            package_arch=${package_arch##*_}
+        
+            # Update deb repository
+            ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+            "apt-ftparchive packages ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch > ${{ secrets.REPOSITORY_PATH }}/Contents-$package_arch && \
+             gzip -c ${{ secrets.REPOSITORY_PATH }}/Contents-$package_arch > ${{ secrets.REPOSITORY_PATH }}/Contents-$package_arch.gz"
+          done
+          
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-            ""
+          "apt-ftparchive release ${{ secrets.REPOSITORY_PATH }} > ${{ secrets.REPOSITORY_PATH }}/Release && \
+           gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+             --batch \
+             --pinentry-mode loopback \
+             --verbose \
+             --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+             --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+             --armor \
+             --detach-sign \
+             --yes ${{ secrets.REPOSITORY_PATH }}/Release && \
+           gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+             --batch \
+             --pinentry-mode loopback \
+             --verbose \
+             --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+             --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+             --clearsign \
+             --output ${{ secrets.REPOSITORY_PATH }}/InRelease \
+             --yes ${{ secrets.REPOSITORY_PATH }}/Release"
