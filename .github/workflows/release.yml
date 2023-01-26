@@ -31,8 +31,7 @@ jobs:
   build-snapshot:
     name: Build snapshot
     needs: [ test ]
-    #if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') }}
+    if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
