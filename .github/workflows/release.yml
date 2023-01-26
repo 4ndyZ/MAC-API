@@ -269,11 +269,11 @@ jobs:
         run: |
           package_type="deb"
           base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
-          package_dir=$base_dir/pool
+          package_dir=$base_dir/pool/main
           dist_dir=$base_dir/dists/stable/main
           
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-          "cd base_dir && \
+          "cd $base_dir && \
           mkdir -p $package_dir && \
           mkdir -p $dist_dir && \
           apt-ftparchive packages ${package_dir#"${base_dir}/"}/ > $dist_dir/Packages && \
