@@ -318,7 +318,9 @@ jobs:
             --verbose \
             --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
             --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-            --sign \
+            --armor \
+            --detach-sign \
+            --output ${{ secrets.REPOSITORY_PATH }}/$package_type/Release.gpg \
             --yes ${{ secrets.REPOSITORY_PATH }}/$package_type/Release && \
           gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
             --batch \
