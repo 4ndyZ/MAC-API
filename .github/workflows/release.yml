@@ -217,8 +217,8 @@ jobs:
             packages/*.zip
             packages/Checksums.txt
 
-  upload-to-repository:
-    name: Upload to repository
+  upload-to-deb-repository:
+    name: Upload to deb repository
     needs: [ build-release ]
     #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
     runs-on: ubuntu-latest
@@ -244,65 +244,45 @@ jobs:
       - name: Upload using rsync over SSH
         id: upload_to_repository
         run: |
-          packages=$(find packages -type f \( -name "*.rpm" -o -name "*.deb" \))
+          package_type="deb"
+          package_dir="${{ secrets.REPOSITORY_PATH }}/$package_type/pool/main"
+          
+          packages=$(find packages -type f -name $package_type)
           
           for package in $packages; do
             package_name=$(basename $package)
-            package_type=${package_name##*.}
-            if [[ $package_type == "rpm" ]]; then
-              package_arch=${package_name%.$package_type}
-              package_arch=${package_arch##*.}
-            elif [[ $package_type == "deb" ]]; then
-              package_arch=${package_name%.$package_type}
-              package_arch=${package_arch##*_}
-            fi
+            package_arch=${package_name%.$package_type}
+            package_arch=${package_arch##*_}
           
             # Create directory if not exists
+            echo "::group::Create directory if not exists"
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-            "mkdir -p ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch"
-        
+            "mkdir -p $package_dir"
+            echo "::endgroup::"
+            
             # Upload package
-            echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/"
+            echo "::group::Upload package"
+            echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
             rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
-            ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch/
-          done
-
-      - name: Update RPM repositories
-        id: update_rpm_repositories
-        run: |
-          packages=$(find packages -type f -name "*.rpm")
-  
-          for package in $packages; do
-            package_name=$(basename $package)
-            package_type=${package_name##*.}
-            package_arch=${package_name%.$package_type}
-            package_arch=${package_arch##*.}
-        
-            # Update rpm repository
-            ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-            "cd ${{ secrets.REPOSITORY_PATH }}/$package_type && \
-            createrepo --update ./$package_arch && \
-            gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-              --batch \
-              --pinentry-mode loopback \
-              --verbose \
-              --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-              --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-              --armor \
-              --detach-sign \
-              --yes ./$package_arch/repodata/repomd.xml"   
+            ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
+            echo "::endgroup::"
           done
 
       - name: Update DEB repository
         id: update_deb_repository
-        run: |          
+        run: |
+          $package_type="deb"
+          $base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
+          $package_dir=$base_dir/pool
+          $dist_dir=$base_dir/dists/stable/main
+          
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-          "package_type=deb && \
-          cd ${{ secrets.REPOSITORY_PATH }}/$package_type && \
-          apt-ftparchive packages . > Packages && \
-          gzip -c Packages > Packages.gz && \
-          bzip2 -c Packages > Packages.bz2 && \
-          apt-ftparchive release . > Release && \
+          "cd base_dir && \
+          mkdir -p $dist_dir && \
+          apt-ftparchive packages ${package_dir#"${base_dir}/"}/ > $dist_dir/Packages && \
+          gzip -c $dist_dir/Packages > $dist_dir/Packages.gz && \
+          bzip2 -c $dist_dir/Packages > $dist_dir/Packages.bz2 && \
+          apt-ftparchive release $dist_dir > $dist_dir/Release && \
           gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
             --batch \
             --pinentry-mode loopback \
@@ -311,8 +291,8 @@ jobs:
             --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
             --armor \
             --detach-sign \
-            --output Release.gpg \
-            --yes Release && \
+            --output $dist_dir/Release.gpg \
+            --yes $dist_dir/Release"
           gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
             --batch \
             --pinentry-mode loopback \
@@ -320,5 +300,73 @@ jobs:
             --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
             --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
             --clearsign \
-            --output InRelease \
-            --yes Release"
+            --output $dist_dir/InRelease \
+            --yes $dist_dir/Release"
+
+  upload-to-rpm-repository:
+    name: Upload to rpm repository
+    needs: [ build-release ]
+    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: packages-release
+          path: packages
+          filter: packages/*.rpm
+
+      - name: Set up SSH
+        id: setup_ssh
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
+          log-public-key: false
+
+      - name: Add repository host to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+
+      - name: Upload using rsync over SSH and update repository
+        id: upload_to_repository
+        run: |
+          package_type="rpm"
+          packages=$(find packages -type f -name $package_type)
+          
+          for package in $packages; do
+            package_name=$(basename $package)
+            package_arch=${package_name%.$package_type}
+            package_arch=${package_arch##*.}
+          
+            package_dir=${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch
+            
+            # Create directory if not exists
+            echo "::group::Create directory if not exists"
+            ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+            "mkdir -p $package_dir"
+            echo "::endgroup::"
+            
+            # Upload package
+            echo "::group::Upload package"
+            echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
+            rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
+            ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
+            echo "::endgroup::"
+           
+            # Update rpm repository
+            echo "::group::Update rpm repository"
+            ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+            "cd $package_dir && \
+            createrepo --update . && \
+            gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+              --batch \
+              --pinentry-mode loopback \
+              --verbose \
+              --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+              --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+              --armor \
+              --detach-sign \
+              --yes ./repodata/repomd.xml"  
+            echo "::endgroup::"
+          done
