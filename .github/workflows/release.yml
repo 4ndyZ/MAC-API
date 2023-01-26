@@ -280,8 +280,8 @@ jobs:
         
             # Update rpm repository
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-            "cd ${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch && \
-            createrepo --update ./$package_type/$package_arch && \
+            "cd ${{ secrets.REPOSITORY_PATH }}/$package_type && \
+            createrepo --update ./$package_arch && \
             gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
               --batch \
               --pinentry-mode loopback \
@@ -290,7 +290,7 @@ jobs:
               --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
               --armor \
               --detach-sign \
-              --yes ./$package_type/$package_arch/repodata/repomd.xml"   
+              --yes ./$package_arch/repodata/repomd.xml"   
           done
 
       - name: Update DEB repository
