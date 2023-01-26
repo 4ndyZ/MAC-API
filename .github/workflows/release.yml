@@ -247,7 +247,7 @@ jobs:
           package_type="deb"
           package_dir="${{ secrets.REPOSITORY_PATH }}/$package_type/pool/main"
           
-          packages=$(find packages -type f -name $package_type)
+          packages=$(find packages -type f -name *.$package_type)
           
           for package in $packages; do
             package_name=$(basename $package)
@@ -329,7 +329,7 @@ jobs:
         id: upload_to_repository
         run: |
           package_type="rpm"
-          packages=$(find packages -type f -name $package_type)
+          packages=$(find packages -type f -name *.$package_type)
           
           for package in $packages; do
             package_name=$(basename $package)
