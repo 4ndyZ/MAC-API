@@ -255,29 +255,26 @@ jobs:
             package_arch=${package_arch##*_}
           
             # Create directory if not exists
-            echo "::group::Create directory if not exists"
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             "mkdir -p $package_dir"
-            echo "::endgroup::"
             
             # Upload package
-            echo "::group::Upload package"
             echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
             rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
             ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
-            echo "::endgroup::"
           done
 
       - name: Update DEB repository
         id: update_deb_repository
         run: |
-          $package_type="deb"
-          $base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
-          $package_dir=$base_dir/pool
-          $dist_dir=$base_dir/dists/stable/main
+          package_type="deb"
+          base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
+          package_dir=$base_dir/pool
+          dist_dir=$base_dir/dists/stable/main
           
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
           "cd base_dir && \
+          mkdir -p $package_dir && \
           mkdir -p $dist_dir && \
           apt-ftparchive packages ${package_dir#"${base_dir}/"}/ > $dist_dir/Packages && \
           gzip -c $dist_dir/Packages > $dist_dir/Packages.gz && \
@@ -342,20 +339,15 @@ jobs:
             package_dir=${{ secrets.REPOSITORY_PATH }}/$package_type/$package_arch
             
             # Create directory if not exists
-            echo "::group::Create directory if not exists"
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             "mkdir -p $package_dir"
-            echo "::endgroup::"
             
             # Upload package
-            echo "::group::Upload package"
             echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
             rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
             ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
-            echo "::endgroup::"
            
             # Update rpm repository
-            echo "::group::Update rpm repository"
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             "cd $package_dir && \
             createrepo --update . && \
@@ -368,5 +360,4 @@ jobs:
               --armor \
               --detach-sign \
               --yes ./repodata/repomd.xml"  
-            echo "::endgroup::"
           done
