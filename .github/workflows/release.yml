@@ -53,7 +53,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v4
         with:
           version: latest
-          args: --rm-dist --snapshot
+          args: --clean --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -270,7 +270,9 @@ jobs:
           package_type="deb"
           base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
           package_dir=$base_dir/pool/main
-          dist_dir=$base_dir/dists/stable/main
+          dist_dir_base=$base_dir/dists
+          dist_dir_stable=$dist_dir_base/stable
+          dist_dir=$dist_dir_stable/main
           
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
           "cd $base_dir && \
@@ -298,7 +300,28 @@ jobs:
             --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
             --clearsign \
             --output $dist_dir/InRelease \
-            --yes $dist_dir/Release"
+            --yes $dist_dir/Release \
+          apt-ftparchive release $dist_dir_stable > $dist_dir_stable/Release && \
+          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+            --batch \
+            --pinentry-mode loopback \
+            --verbose \
+            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+            --armor \
+            --detach-sign \
+            --output $dist_dir_stable/Release.gpg \
+            --yes $dist_dir_stable/Release && \
+          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+            --batch \
+            --pinentry-mode loopback \
+            --verbose \
+            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+            --clearsign \
+            --output $dist_dir_stable/InRelease \
+            --yes $dist_dir_stable/Release"
+          
 
   upload-to-rpm-repository:
     name: Upload to rpm repository
