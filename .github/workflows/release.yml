@@ -5,6 +5,54 @@ on:
   push:
 
 jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      is_release: ${{ steps.check.outputs.is_release }}
+      is_snapshot: ${{ steps.check.outputs.is_snapshot }}
+      is_prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: get_version
+        run: |
+          version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\///' | sed -e 's/^refs\/heads\///')
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Check if release/snapshot
+        id: check
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* && $GITHUB_BRANCH == refs/heads/main ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "is_snapshot=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "is_snapshot=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if prerelease
+        id: prerelease
+        run: |
+          # Check for non semver tags
+          if [[ ${{ steps.get_version.outputs.version }} != "v"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          if [[ ${{ steps.get_version.outputs.version }} == *"rc"* ]] || \
+            [[ ${{ steps.get_version.outputs.version }} == *"beta"* ]] || \
+            [[ ${{ steps.get_version.outputs.version }} == *"alpha"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -31,8 +79,7 @@ jobs:
   build-snapshot:
     name: Build snapshot
     needs: [ test ]
-    #if: ${{ !startsWith(github.ref, 'refs/tags/v*') }}
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') }}
+    #if: ${{ needs.prepare.outputs.is_snapshot == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -72,7 +119,7 @@ jobs:
   build-release:
     name: Build release
     needs: [ test ]
-    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    #if: ${{ needs.prepare.outputs.is_release == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       gpg_fingerprint: ${{ steps.import_gpg.outputs.fingerprint }}
@@ -157,35 +204,13 @@ jobs:
   create-github-release:
     name: Create GitHub release
     needs: [ build-release ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    if: ${{ needs.build-release.outputs.is_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
-      - name: Get version
-        id: get_version
-        run: |
-          version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\///' | sed -e 's/^refs\/heads\///')
-          echo "version=$version" >> $GITHUB_OUTPUT
-
-      - name: Check if prerelease
-        id: prerelease
-        run: |
-          # Check for non semver tags
-          if [[ ${{ steps.get_version.outputs.version }} != "v"* ]]; then
-            echo "prerelease=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          if [[ ${{ steps.get_version.outputs.version }} == *"rc"* ]] || [[ ${{ steps.get_version.outputs.version }} == *"beta"* ]] || \
-            [[ ${{ steps.get_version.outputs.version }} == *"alpha"* ]]; then
-            echo "prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "prerelease=false" >> $GITHUB_OUTPUT
-          fi
 
       - name: Create change log using git log
         id: changelog
@@ -206,10 +231,10 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          name: Release ${{ steps.get_version.outputs.version }}
+          tag_name: ${{ needs.build-release.outputs.version }}
+          name: Release ${{ needs.build-release.outputs.version }}
           body_path: CHANGELOG.md
-          prerelease: ${{ steps.prerelease.outputs.prerelease }}
+          prerelease: ${{ needs.build-release.outputs.is_prerelease }}
           files: |
             packages/*.deb
             packages/*.rpm
@@ -220,7 +245,7 @@ jobs:
   upload-to-deb-repository:
     name: Upload to deb repository
     needs: [ build-release ]
-    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    #if: ${{ needs.build-release.outputs.is_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
@@ -277,6 +302,8 @@ jobs:
           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
           "cd $base_dir && \
           mkdir -p $package_dir && \
+          mkdir -p $dist_dir_base && \
+          mkdir -p $dist_dir_stable && \
           mkdir -p $dist_dir && \
           apt-ftparchive packages ${package_dir#"${base_dir}/"}/ > $dist_dir/Packages && \
           gzip -c $dist_dir/Packages > $dist_dir/Packages.gz && \
@@ -326,7 +353,7 @@ jobs:
   upload-to-rpm-repository:
     name: Upload to rpm repository
     needs: [ build-release ]
-    #if: ${{ startsWith(github.ref, 'refs/tags/v*') && github.branch == 'main' }}
+    if: ${{ needs.build-release.outputs.is_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
