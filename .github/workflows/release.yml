@@ -10,9 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get_version.outputs.version }}
-      is_release: ${{ steps.check.outputs.is_release }}
-      is_snapshot: ${{ steps.check.outputs.is_snapshot }}
-      is_prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+      type: ${{ steps.get_type.outputs.type }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -26,7 +24,7 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Check if release, prerelease or snapshot
-        id: check
+        id: get_type
         run: |
           # Push to main branch with a tag -> release or prerelease
           if [[ "${{ github.ref }}" == refs/tags/* && "${{ github.branch }}" == refs/heads/main ]]; then
@@ -37,7 +35,6 @@ jobs:
             else
               echo "type=release" >> $GITHUB_OUTPUT
             fi
-          # Push to main branch without a tag -> snapshot
           else
             echo "type=snapshot" >> $GITHUB_OUTPUT
           fi
