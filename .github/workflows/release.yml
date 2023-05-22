@@ -25,32 +25,21 @@ jobs:
           version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\///' | sed -e 's/^refs\/heads\///')
           echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: Check if release/snapshot
+      - name: Check if release, prerelease or snapshot
         id: check
         run: |
-          if [[ $GITHUB_REF == refs/tags/v* && $GITHUB_BRANCH == refs/heads/main ]]; then
-            echo "is_release=true" >> $GITHUB_OUTPUT
-            echo "is_snapshot=false" >> $GITHUB_OUTPUT
+          # Push to main branch with a tag -> release or prerelease
+          if [[ $GITHUB_REF == refs/tags/* && $GITHUB_BRANCH == refs/heads/main ]]; then
+            if [[ ${{ steps.get_version.outputs.version }} == *"rc"* ]] || \
+              [[ ${{ steps.get_version.outputs.version }} == *"beta"* ]] || \
+              [[ ${{ steps.get_version.outputs.version }} == *"alpha"* ]]; then
+              echo "type=prerelease" >> $GITHUB_OUTPUT
+            else
+              echo "type=release" >> $GITHUB_OUTPUT
+            fi
+          # Push to main branch without a tag -> snapshot
           else
-            echo "is_release=false" >> $GITHUB_OUTPUT
-            echo "is_snapshot=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check if prerelease
-        id: prerelease
-        run: |
-          # Check for non semver tags
-          if [[ ${{ steps.get_version.outputs.version }} != "v"* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          if [[ ${{ steps.get_version.outputs.version }} == *"rc"* ]] || \
-            [[ ${{ steps.get_version.outputs.version }} == *"beta"* ]] || \
-            [[ ${{ steps.get_version.outputs.version }} == *"alpha"* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "type=snapshot" >> $GITHUB_OUTPUT
           fi
 
   test:
@@ -79,7 +68,7 @@ jobs:
   build-snapshot:
     name: Build snapshot
     needs: [ test, prepare ]
-    if: ${{ needs.prepare.outputs.is_snapshot == 'true' }}
+    if: ${{ needs.prepare.outputs.type == 'snapshot' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -119,7 +108,7 @@ jobs:
   build-release:
     name: Build release
     needs: [ test, prepare ]
-    if: ${{ needs.prepare.outputs.is_release == 'true' }}
+    if: ${{ needs.prepare.outputs.type == 'release' or needs.prepare.outputs.type == 'prerelease' }}
     runs-on: ubuntu-latest
     outputs:
       gpg_fingerprint: ${{ steps.import_gpg.outputs.fingerprint }}
@@ -153,8 +142,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v4
         with:
           version: latest
-          args: --clean --snapshot
-          #args: release --clean
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -204,7 +192,7 @@ jobs:
   create-github-release:
     name: Create GitHub release
     needs: [ build-release ]
-    if: ${{ needs.build-release.outputs.is_release == 'true' }}
+    if: ${{ needs.prepare.outputs.type == 'release' or needs.prepare.outputs.type == 'prerelease' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -234,7 +222,7 @@ jobs:
           tag_name: ${{ needs.build-release.outputs.version }}
           name: Release ${{ needs.build-release.outputs.version }}
           body_path: CHANGELOG.md
-          prerelease: ${{ needs.build-release.outputs.is_prerelease }}
+          prerelease: ${{ needs.prepare.outputs.type == 'prerelease' }}
           files: |
             packages/*.deb
             packages/*.rpm
@@ -245,7 +233,7 @@ jobs:
 #  upload-to-deb-repository:
 #    name: Upload to deb repository
 #    needs: [ build-release ]
-#    #if: ${{ needs.build-release.outputs.is_release == 'true' }}
+          #    #if: ${{ needs.prepare.outputs.type == 'release' }}
 #    runs-on: ubuntu-latest
 #    steps:
 #      - name: Download artifacts
@@ -353,7 +341,7 @@ jobs:
   upload-to-rpm-repository:
     name: Upload to rpm repository
     needs: [ build-release ]
-    if: ${{ needs.build-release.outputs.is_release == 'true' }}
+    if: ${{ needs.prepare.outputs.type == 'release' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
