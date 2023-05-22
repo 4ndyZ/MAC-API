@@ -1,3 +1,4 @@
+project_name: mac-api
 builds:
   - env: [CGO_ENABLED=0]
     goos:
@@ -13,10 +14,14 @@ builds:
 checksum:
   name_template: "Checksums.txt"
 archives:
-  - name_template: "{{ tolower .ProjectName }}-{{ tolower .Tag }}.{{ .Os }}.{{ tolower .Arch }}"
-    replacements:
-      amd64: x86_64
-      darwin: macOS
+  - name_template: >-
+      {{ tolower .ProjectName }}-{{ tolower .Version }}.
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}
+      {{- end }}.
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ tolower .Arch }}
+      {{- end }}
     files:
       - config/config.conf
     format_overrides:
@@ -26,8 +31,8 @@ nfpms:
   - maintainer: AndyZ <info@andycraftz.eu>
     description: MAC Address API
     homepage: https://github.com/4ndyZ/MAC-API
-    package_name: "{{ tolower .ProjectName }}"
-    file_name_template: "{{ tolower .ProjectName }}-{{ tolower .Tag }}.{{ .Os }}.{{ tolower .Arch }}"
+    file_name_template: >-
+      {{ tolower .ProjectName }}_{{ tolower .Version }}+{{ .Os }}_{{ tolower .Arch }}
     license: GPL-3.0
     # Build as deb for Debian based distributions and rpm for RedHat based distributions
     formats:
@@ -55,10 +60,10 @@ nfpms:
       postremove: "scripts/postremove.sh"
     overrides:
       rpm:
-        replacements:
-          amd64: x86_64
-          arm64: aarch64
-release:
-  # Set name of the release on GitHub
-  name_template: "Release v{{ .Version }}"
-  prerelease: auto
+        file_name_template: >-
+          {{ tolower .ProjectName }}-{{ tolower .Version }}-1.{{ .Os }}.
+          {{- if eq .Arch "amd64" }}x86_64
+          {{- else if eq .Arch "arm64" }}aarch64
+          {{- else if eq .Arch "arm" }}armhfp
+          {{- else }}{{ tolower .Arch }}
+          {{- end }}

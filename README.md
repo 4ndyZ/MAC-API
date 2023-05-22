@@ -113,4 +113,4 @@ If you want to enable debug messages please change the configuration file  or ru
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
-[GPL-3.0](https://github.com/4ndyZ/MAC-API/blob/master/COPYING)
+[GPL-3.0](https://github.com/4ndyZ/MAC-API/blob/main/COPYING)
