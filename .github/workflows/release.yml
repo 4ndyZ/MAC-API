@@ -78,8 +78,8 @@ jobs:
 
   build-snapshot:
     name: Build snapshot
-    needs: [ test ]
-    #if: ${{ needs.prepare.outputs.is_snapshot == 'true' }}
+    needs: [ test, prepare ]
+    if: ${{ needs.prepare.outputs.is_snapshot == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -118,8 +118,8 @@ jobs:
 
   build-release:
     name: Build release
-    needs: [ test ]
-    #if: ${{ needs.prepare.outputs.is_release == 'true' }}
+    needs: [ test, prepare ]
+    if: ${{ needs.prepare.outputs.is_release == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       gpg_fingerprint: ${{ steps.import_gpg.outputs.fingerprint }}
@@ -242,112 +242,112 @@ jobs:
             packages/*.zip
             packages/Checksums.txt
 
-  upload-to-deb-repository:
-    name: Upload to deb repository
-    needs: [ build-release ]
-    #if: ${{ needs.build-release.outputs.is_release == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: packages-release
-          path: packages
-
-      - name: Set up SSH
-        id: setup_ssh
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
-          log-public-key: false
-
-      - name: Add repository host to known hosts
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
-
-      - name: Upload using rsync over SSH
-        id: upload_to_repository
-        run: |
-          package_type="deb"
-          package_dir="${{ secrets.REPOSITORY_PATH }}/$package_type/pool/main"
-          
-          packages=$(find packages -type f -name *.$package_type)
-          
-          for package in $packages; do
-            package_name=$(basename $package)
-            package_arch=${package_name%.$package_type}
-            package_arch=${package_arch##*_}
-          
-            # Create directory if not exists
-            ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-            "mkdir -p $package_dir"
-            
-            # Upload package
-            echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
-            rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
-            ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
-          done
-
-      - name: Update DEB repository
-        id: update_deb_repository
-        run: |
-          package_type="deb"
-          base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
-          package_dir=$base_dir/pool/main
-          dist_dir_base=$base_dir/dists
-          dist_dir_stable=$dist_dir_base/stable
-          dist_dir=$dist_dir_stable/main
-          
-          ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-          "cd $base_dir && \
-          mkdir -p $package_dir && \
-          mkdir -p $dist_dir_base && \
-          mkdir -p $dist_dir_stable && \
-          mkdir -p $dist_dir && \
-          apt-ftparchive packages ${package_dir#"${base_dir}/"}/ > $dist_dir/Packages && \
-          gzip -c $dist_dir/Packages > $dist_dir/Packages.gz && \
-          bzip2 -c $dist_dir/Packages > $dist_dir/Packages.bz2 && \
-          apt-ftparchive release $dist_dir > $dist_dir/Release && \
-          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-            --batch \
-            --pinentry-mode loopback \
-            --verbose \
-            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-            --armor \
-            --detach-sign \
-            --output $dist_dir/Release.gpg \
-            --yes $dist_dir/Release && \
-          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-            --batch \
-            --pinentry-mode loopback \
-            --verbose \
-            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-            --clearsign \
-            --output $dist_dir/InRelease \
-            --yes $dist_dir/Release \
-          apt-ftparchive release $dist_dir_stable > $dist_dir_stable/Release && \
-          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-            --batch \
-            --pinentry-mode loopback \
-            --verbose \
-            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-            --armor \
-            --detach-sign \
-            --output $dist_dir_stable/Release.gpg \
-            --yes $dist_dir_stable/Release && \
-          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-            --batch \
-            --pinentry-mode loopback \
-            --verbose \
-            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-            --clearsign \
-            --output $dist_dir_stable/InRelease \
-            --yes $dist_dir_stable/Release"
+#  upload-to-deb-repository:
+#    name: Upload to deb repository
+#    needs: [ build-release ]
+#    #if: ${{ needs.build-release.outputs.is_release == 'true' }}
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Download artifacts
+#        uses: actions/download-artifact@v3
+#        with:
+#          name: packages-release
+#          path: packages
+#
+#      - name: Set up SSH
+#        id: setup_ssh
+#        uses: webfactory/ssh-agent@v0.7.0
+#        with:
+#          ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
+#          log-public-key: false
+#
+#      - name: Add repository host to known hosts
+#        run: |
+#          mkdir -p ~/.ssh
+#          echo "${{ secrets.KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+#
+#      - name: Upload using rsync over SSH
+#        id: upload_to_repository
+#        run: |
+#          package_type="deb"
+#          package_dir="${{ secrets.REPOSITORY_PATH }}/$package_type/pool/main"
+#
+#          packages=$(find packages -type f -name *.$package_type)
+#
+#          for package in $packages; do
+#            package_name=$(basename $package)
+#            package_arch=${package_name%.$package_type}
+#            package_arch=${package_arch##*_}
+#
+#            # Create directory if not exists
+#            ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+#            "mkdir -p $package_dir"
+#
+#            # Upload package
+#            echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
+#            rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
+#            ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
+#          done
+#
+#      - name: Update DEB repository
+#        id: update_deb_repository
+#        run: |
+#          package_type="deb"
+#          base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
+#          package_dir=$base_dir/pool/main
+#          dist_dir_base=$base_dir/dists
+#          dist_dir_stable=$dist_dir_base/stable
+#          dist_dir=$dist_dir_stable/main
+#
+#          ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+#          "cd $base_dir && \
+#          mkdir -p $package_dir && \
+#          mkdir -p $dist_dir_base && \
+#          mkdir -p $dist_dir_stable && \
+#          mkdir -p $dist_dir && \
+#          apt-ftparchive packages ${package_dir#"${base_dir}/"}/ > $dist_dir/Packages && \
+#          gzip -c $dist_dir/Packages > $dist_dir/Packages.gz && \
+#          bzip2 -c $dist_dir/Packages > $dist_dir/Packages.bz2 && \
+#          apt-ftparchive release $dist_dir > $dist_dir/Release && \
+#          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+#            --batch \
+#            --pinentry-mode loopback \
+#            --verbose \
+#            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+#            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+#            --armor \
+#            --detach-sign \
+#            --output $dist_dir/Release.gpg \
+#            --yes $dist_dir/Release && \
+#          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+#            --batch \
+#            --pinentry-mode loopback \
+#            --verbose \
+#            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+#            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+#            --clearsign \
+#            --output $dist_dir/InRelease \
+#            --yes $dist_dir/Release \
+#          apt-ftparchive release $dist_dir_stable > $dist_dir_stable/Release && \
+#          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+#            --batch \
+#            --pinentry-mode loopback \
+#            --verbose \
+#            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+#            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+#            --armor \
+#            --detach-sign \
+#            --output $dist_dir_stable/Release.gpg \
+#            --yes $dist_dir_stable/Release && \
+#          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+#            --batch \
+#            --pinentry-mode loopback \
+#            --verbose \
+#            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+#            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+#            --clearsign \
+#            --output $dist_dir_stable/InRelease \
+#            --yes $dist_dir_stable/Release"
           
 
   upload-to-rpm-repository:
