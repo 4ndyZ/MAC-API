@@ -29,7 +29,7 @@ jobs:
         id: check
         run: |
           # Push to main branch with a tag -> release or prerelease
-          if [[ $GITHUB_REF == refs/tags/* && $GITHUB_BRANCH == refs/heads/main ]]; then
+          if [[ "${{ github.ref }}" == refs/tags/* && "${{ github.branch }}" == refs/heads/main ]]; then
             if [[ ${{ steps.get_version.outputs.version }} == *"rc"* ]] || \
               [[ ${{ steps.get_version.outputs.version }} == *"beta"* ]] || \
               [[ ${{ steps.get_version.outputs.version }} == *"alpha"* ]]; then
