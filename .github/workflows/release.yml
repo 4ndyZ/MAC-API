@@ -108,7 +108,7 @@ jobs:
   build-release:
     name: Build release
     needs: [ test, prepare ]
-    if: ${{ needs.prepare.outputs.type == 'release' or needs.prepare.outputs.type == 'prerelease' }}
+    if: ${{ needs.prepare.outputs.type == 'release' || needs.prepare.outputs.type == 'prerelease' }}
     runs-on: ubuntu-latest
     outputs:
       gpg_fingerprint: ${{ steps.import_gpg.outputs.fingerprint }}
@@ -192,7 +192,7 @@ jobs:
   create-github-release:
     name: Create GitHub release
     needs: [ build-release ]
-    if: ${{ needs.prepare.outputs.type == 'release' or needs.prepare.outputs.type == 'prerelease' }}
+    if: ${{ needs.prepare.outputs.type == 'release' || needs.prepare.outputs.type == 'prerelease' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
