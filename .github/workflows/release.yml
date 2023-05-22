@@ -27,6 +27,7 @@ jobs:
               echo "type=prerelease" >> $GITHUB_OUTPUT
             else
               echo "type=release" >> $GITHUB_OUTPUT
+            fi
           else
             # everything else -> snapshot
             echo "type=snapshot" >> $GITHUB_OUTPUT
