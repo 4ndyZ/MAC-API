@@ -67,7 +67,7 @@ jobs:
 
   build-snapshot:
     name: Build snapshot
-    needs: [ test, prepare ]
+    needs: [ prepare, test ]
     if: ${{ needs.prepare.outputs.type == 'snapshot' }}
     runs-on: ubuntu-latest
     steps:
@@ -107,7 +107,7 @@ jobs:
 
   build-release:
     name: Build release
-    needs: [ test, prepare ]
+    needs: [ prepare, test ]
     if: ${{ needs.prepare.outputs.type == 'release' || needs.prepare.outputs.type == 'prerelease' }}
     runs-on: ubuntu-latest
     outputs:
@@ -191,7 +191,7 @@ jobs:
 
   create-github-release:
     name: Create GitHub release
-    needs: [ build-release ]
+    needs: [ prepare, build-release ]
     if: ${{ needs.prepare.outputs.type == 'release' || needs.prepare.outputs.type == 'prerelease' }}
     runs-on: ubuntu-latest
     steps:
@@ -340,7 +340,7 @@ jobs:
 
   upload-to-rpm-repository:
     name: Upload to rpm repository
-    needs: [ build-release ]
+    needs: [ prepare, build-release ]
     if: ${{ needs.prepare.outputs.type == 'release' }}
     runs-on: ubuntu-latest
     steps:
