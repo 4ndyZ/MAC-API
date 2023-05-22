@@ -9,7 +9,6 @@ jobs:
     name: Prepare
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get_version.outputs.version }}
       type: ${{ steps.get_type.outputs.type }}
     steps:
       - name: Checkout repository
@@ -17,25 +16,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get version
-        id: get_version
-        run: |
-          version=$(echo "${{ github.ref }}" | sed -e 's/^refs\/tags\///' | sed -e 's/^refs\/heads\///')
-          echo "version=$version" >> $GITHUB_OUTPUT
-
       - name: Check if release, prerelease or snapshot
         id: get_type
         run: |
-          # Push to main branch with a tag -> release or prerelease
-          if [[ "${{ github.ref }}" == refs/tags/* && "${{ github.branch }}" == refs/heads/main ]]; then
-            if [[ ${{ steps.get_version.outputs.version }} == *"rc"* ]] || \
-              [[ ${{ steps.get_version.outputs.version }} == *"beta"* ]] || \
-              [[ ${{ steps.get_version.outputs.version }} == *"alpha"* ]]; then
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Branch with a tag -> release or prerelease
+            if [[ ${{ github.ref_name }} == *"rc"* ]] || \
+              [[ ${{ github.ref_name }} == *"beta"* ]] || \
+              [[ ${{ github.ref_name }} == *"alpha"* ]]; then
               echo "type=prerelease" >> $GITHUB_OUTPUT
             else
               echo "type=release" >> $GITHUB_OUTPUT
-            fi
           else
+            # everything else -> snapshot
             echo "type=snapshot" >> $GITHUB_OUTPUT
           fi
 
@@ -216,8 +209,8 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ needs.build-release.outputs.version }}
-          name: Release ${{ needs.build-release.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          name: Release v${{ github.ref_name }}
           body_path: CHANGELOG.md
           prerelease: ${{ needs.prepare.outputs.type == 'prerelease' }}
           files: |
@@ -227,7 +220,7 @@ jobs:
             packages/*.zip
             packages/Checksums.txt
 
-#  upload-to-deb-repository:
+          #  upload-to-deb-repository:
 #    name: Upload to deb repository
 #    needs: [ build-release ]
           #    #if: ${{ needs.prepare.outputs.type == 'release' }}
