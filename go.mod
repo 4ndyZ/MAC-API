@@ -3,7 +3,7 @@ module github.com/4ndyZ/MAC-API/m/v2
 go 1.20
 
 require (
-	github.com/gofiber/fiber/v2 v2.49.0
+	github.com/gofiber/fiber/v2 v2.49.1
 	github.com/rs/zerolog v1.30.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -18,7 +18,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.48.0 // indirect
+	github.com/valyala/fasthttp v1.49.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 )
