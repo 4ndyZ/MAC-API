@@ -1,6 +1,6 @@
 module github.com/4ndyZ/MAC-API/m/v2
 
-go 1.21.7
+go 1.22.3
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.1
