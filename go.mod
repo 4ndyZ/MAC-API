@@ -3,7 +3,7 @@ module github.com/4ndyZ/MAC-API/m/v2
 go 1.22.4
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.4
+	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/rs/zerolog v1.33.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
