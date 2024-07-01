@@ -1,3 +1,4 @@
+---
 name: "Test and release"
 
 on:
@@ -12,7 +13,7 @@ jobs:
       type: ${{ steps.get_type.outputs.type }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -38,13 +39,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Go
         id: setup_go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -63,13 +64,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Go
         id: setup_go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -77,7 +78,7 @@ jobs:
 
       - name: Run GoReleaser snapshot
         id: goreleaser-snapshot
-        uses: goreleaser/goreleaser-action@v4
+        uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
           args: --clean --snapshot
@@ -85,7 +86,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: packages-snapshot
           path: |
@@ -105,13 +106,13 @@ jobs:
       gpg_fingerprint: ${{ steps.import_gpg.outputs.fingerprint }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Go
         id: setup_go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -119,7 +120,7 @@ jobs:
 
       - name: Import GPG key
         id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v5
+        uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
@@ -130,7 +131,7 @@ jobs:
 
       - name: Run GoReleaser release
         id: goreleaser-release
-        uses: goreleaser/goreleaser-action@v4
+        uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
           args: release --clean
@@ -169,7 +170,7 @@ jobs:
 
       - name: Upload artifacts
         id: upload_artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: packages-release
           path: |
@@ -187,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -201,14 +202,14 @@ jobs:
 
       - name: Download artifacts
         id: download_artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: packages-release
           path: packages
 
       - name: Create GitHub release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Release v${{ github.ref_name }}
@@ -221,113 +222,112 @@ jobs:
             packages/*.zip
             packages/Checksums.txt
 
-          #  upload-to-deb-repository:
-#    name: Upload to deb repository
-#    needs: [ build-release ]
-          #    #if: ${{ needs.prepare.outputs.type == 'release' }}
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Download artifacts
-#        uses: actions/download-artifact@v3
-#        with:
-#          name: packages-release
-#          path: packages
-#
-#      - name: Set up SSH
-#        id: setup_ssh
-#        uses: webfactory/ssh-agent@v0.7.0
-#        with:
-#          ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
-#          log-public-key: false
-#
-#      - name: Add repository host to known hosts
-#        run: |
-#          mkdir -p ~/.ssh
-#          echo "${{ secrets.KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
-#
-#      - name: Upload using rsync over SSH
-#        id: upload_to_repository
-#        run: |
-#          package_type="deb"
-#          package_dir="${{ secrets.REPOSITORY_PATH }}/$package_type/pool/main"
-#
-#          packages=$(find packages -type f -name *.$package_type)
-#
-#          for package in $packages; do
-#            package_name=$(basename $package)
-#            package_arch=${package_name%.$package_type}
-#            package_arch=${package_arch##*_}
-#
-#            # Create directory if not exists
-#            ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-#            "mkdir -p $package_dir"
-#
-#            # Upload package
-#            echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
-#            rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
-#            ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
-#          done
-#
-#      - name: Update DEB repository
-#        id: update_deb_repository
-#        run: |
-#          package_type="deb"
-#          base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
-#          package_dir=$base_dir/pool/main
-#          dist_dir_base=$base_dir/dists
-#          dist_dir_stable=$dist_dir_base/stable
-#          dist_dir=$dist_dir_stable/main
-#
-#          ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
-#          "cd $base_dir && \
-#          mkdir -p $package_dir && \
-#          mkdir -p $dist_dir_base && \
-#          mkdir -p $dist_dir_stable && \
-#          mkdir -p $dist_dir && \
-#          apt-ftparchive packages ${package_dir#"${base_dir}/"}/ > $dist_dir/Packages && \
-#          gzip -c $dist_dir/Packages > $dist_dir/Packages.gz && \
-#          bzip2 -c $dist_dir/Packages > $dist_dir/Packages.bz2 && \
-#          apt-ftparchive release $dist_dir > $dist_dir/Release && \
-#          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-#            --batch \
-#            --pinentry-mode loopback \
-#            --verbose \
-#            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-#            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-#            --armor \
-#            --detach-sign \
-#            --output $dist_dir/Release.gpg \
-#            --yes $dist_dir/Release && \
-#          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-#            --batch \
-#            --pinentry-mode loopback \
-#            --verbose \
-#            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-#            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-#            --clearsign \
-#            --output $dist_dir/InRelease \
-#            --yes $dist_dir/Release \
-#          apt-ftparchive release $dist_dir_stable > $dist_dir_stable/Release && \
-#          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-#            --batch \
-#            --pinentry-mode loopback \
-#            --verbose \
-#            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-#            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-#            --armor \
-#            --detach-sign \
-#            --output $dist_dir_stable/Release.gpg \
-#            --yes $dist_dir_stable/Release && \
-#          gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
-#            --batch \
-#            --pinentry-mode loopback \
-#            --verbose \
-#            --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
-#            --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
-#            --clearsign \
-#            --output $dist_dir_stable/InRelease \
-#            --yes $dist_dir_stable/Release"
-          
+  # upload-to-deb-repository:
+  #   name: Upload to deb repository
+  #   needs: [ build-release ]
+  #   if: ${{ needs.prepare.outputs.type == 'release' }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: packages-release
+  #         path: packages
+
+  #     - name: Set up SSH
+  #       id: setup_ssh
+  #       uses: webfactory/ssh-agent@v0.9.0
+  #       with:
+  #         ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
+  #         log-public-key: false
+
+  #     - name: Add repository host to known hosts
+  #       run: |
+  #         mkdir -p ~/.ssh
+  #         echo "${{ secrets.KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+
+  #     - name: Upload using rsync over SSH
+  #       id: upload_to_repository
+  #       run: |
+  #         package_type="deb"
+  #         package_dir="${{ secrets.REPOSITORY_PATH }}/$package_type/pool/main"
+
+  #         packages=$(find packages -type f -name *.$package_type)
+
+  #         for package in $packages; do
+  #           package_name=$(basename $package)
+  #           package_arch=${package_name%.$package_type}
+  #           package_arch=${package_arch##*_}
+
+  #           # Create directory if not exists
+  #           ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+  #           "mkdir -p $package_dir"
+
+  #           # Upload package
+  #           echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
+  #           rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
+  #           ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
+  #        done
+
+  #     - name: Update DEB repository
+  #       id: update_deb_repository
+  #       run: |
+  #         package_type="deb"
+  #         base_dir="${{ secrets.REPOSITORY_PATH }}/$package_type"
+  #         package_dir=$base_dir/pool/main
+  #         dist_dir_base=$base_dir/dists
+  #         dist_dir_stable=$dist_dir_base/stable
+  #         dist_dir=$dist_dir_stable/main
+
+  #         ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
+  #         "cd $base_dir && \
+  #         mkdir -p $package_dir && \
+  #         mkdir -p $dist_dir_base && \
+  #         mkdir -p $dist_dir_stable && \
+  #         mkdir -p $dist_dir && \
+  #         apt-ftparchive packages ${package_dir#"${base_dir}/"}/ > $dist_dir/Packages && \
+  #         gzip -c $dist_dir/Packages > $dist_dir/Packages.gz && \
+  #         bzip2 -c $dist_dir/Packages > $dist_dir/Packages.bz2 && \
+  #         apt-ftparchive release $dist_dir > $dist_dir/Release && \
+  #         gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+  #           --batch \
+  #           --pinentry-mode loopback \
+  #           --verbose \
+  #           --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+  #           --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+  #           --armor \
+  #           --detach-sign \
+  #           --output $dist_dir/Release.gpg \
+  #           --yes $dist_dir/Release && \
+  #         gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+  #           --batch \
+  #           --pinentry-mode loopback \
+  #           --verbose \
+  #           --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+  #           --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+  #           --clearsign \
+  #           --output $dist_dir/InRelease \
+  #          --yes $dist_dir/Release \
+  #         apt-ftparchive release $dist_dir_stable > $dist_dir_stable/Release && \
+  #         gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+  #           --batch \
+  #           --pinentry-mode loopback \
+  #           --verbose \
+  #           --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+  #           --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+  #           --armor \
+  #           --detach-sign \
+  #           --output $dist_dir_stable/Release.gpg \
+  #           --yes $dist_dir_stable/Release && \
+  #         gpg2 --homedir=/home/${{ secrets.REPOSITORY_USER }}/.gnupg \
+  #           --batch \
+  #           --pinentry-mode loopback \
+  #           --verbose \
+  #           --local-user "${{ needs.build-release.outputs.gpg_fingerprint }}" \
+  #           --passphrase-file "/home/${{ secrets.REPOSITORY_USER }}/.gnupg/passphrase" \
+  #           --clearsign \
+  #           --output $dist_dir_stable/InRelease \
+  #           --yes $dist_dir_stable/Release"
 
   upload-to-rpm-repository:
     name: Upload to rpm repository
@@ -336,14 +336,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: packages-release
           path: packages
 
       - name: Set up SSH
         id: setup_ssh
-        uses: webfactory/ssh-agent@v0.7.0
+        uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.REPOSITORY_SSH_KEY }}
           log-public-key: false
@@ -358,23 +358,23 @@ jobs:
         run: |
           package_type="rpm"
           packages=$(find packages -type f -name *.$package_type)
-          
+
           for package in $packages; do
             package_name=$(basename $package)
             package_arch=${package_name%.$package_type}
             package_arch=${package_arch##*.}
-          
+
             package_dir=${{ secrets.REPOSITORY_PATH }}/$package_type/release/$package_arch
-            
+
             # Create directory if not exists
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             "mkdir -p $package_dir"
-            
+
             # Upload package
             echo "Uploading $package_name to ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir"
             rsync -avz --no-perms --no-owner --no-group -e "ssh -p ${{ secrets.REPOSITORY_HOST_PORT }}" $package \
             ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }}:$package_dir/
-           
+
             # Update rpm repository
             ssh -p ${{ secrets.REPOSITORY_HOST_PORT }} ${{ secrets.REPOSITORY_USER }}@${{ secrets.REPOSITORY_HOST }} \
             "cd $package_dir && \
